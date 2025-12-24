@@ -37,6 +37,51 @@ const getLeads = async (req, res) => {
 	}
 };
 
+// Get leads filtered by date (day/week/month)
+const getLeadsByDate = async (req, res) => {
+	const csrId = req.user.userId;
+	const { filter } = req.query; // filter = day / week / month
+
+	let startDate;
+	const now = new Date();
+
+	switch (filter) {
+		case "day":
+			startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			break;
+		case "week":
+			const firstDayOfWeek = now.getDate() - now.getDay(); // Sunday = 0
+			startDate = new Date(now.getFullYear(), now.getMonth(), firstDayOfWeek);
+			break;
+		case "month":
+			startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+			break;
+		default:
+			return res.status(400).json({
+				success: false,
+				msg: "Invalid filter. Use day, week, or month.",
+			});
+	}
+
+	try {
+		const leads = await Lead.find({
+			assignedTo: csrId,
+			createdAt: { $gte: startDate },
+		});
+		res.status(200).json({
+			success: true,
+			msg: `Leads fetched successfully for ${filter}`,
+			data: leads,
+		});
+	} catch (error) {
+		res.status(400).json({
+			success: false,
+			msg: "Error occurred in fetching leads by date",
+			error: error.message,
+		});
+	}
+};
+
 // Get single lead by ID
 const getSingleLead = async (req, res) => {
 	const id = req.params.id;
@@ -97,4 +142,11 @@ const updateLead = async (req, res) => {
 	}
 };
 
-module.exports = { createLead, getLeads, updateLead, deleteLead, getSingleLead };
+module.exports = {
+	createLead,
+	getLeads,
+	getLeadsByDate,
+	updateLead,
+	deleteLead,
+	getSingleLead
+};
