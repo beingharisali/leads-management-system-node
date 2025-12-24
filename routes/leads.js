@@ -1,17 +1,23 @@
 const express = require("express");
 const router = express.Router();
+
 const {
 	createLead,
 	getLeads,
-	updateLead,
-	deletLead,
 	getSingleLead,
+	updateLead,
+	deleteLead,
 } = require("../controllers/leads");
 
-router.get("/get-leads", getLeads);
-router.post("/create-leads", createLead);
-router.patch("/update-leads/:id", updateLead);
-router.delete("/delete-leads/:id", deletLead);
-router.get("get-single-leads/:id", getSingleLead);
+const authenticateUser = require("../middleware/authentication");
+
+router.get("/get-leads", authenticateUser, getLeads);
+
+router.post("/create-leads", authenticateUser, createLead);
+
+router.get("/get-single-leads/:id", authenticateUser, getSingleLead);
+
+router.patch("/update-leads/:id", authenticateUser, updateLead);
+router.delete("/delete-leads/:id", authenticateUser, deleteLead);
 
 module.exports = router;
