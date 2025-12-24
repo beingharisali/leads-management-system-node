@@ -120,7 +120,7 @@ const deleteLead = async (req, res) => {
 	}
 };
 
-// Update lead by ID
+
 const updateLead = async (req, res) => {
 	const id = req.params.id;
 	try {
@@ -142,7 +142,7 @@ const updateLead = async (req, res) => {
 	}
 };
 
-// Update lead status (Task 8)
+
 const updateLeadStatus = async (req, res) => {
 	const id = req.params.id;
 	const { status } = req.body;
@@ -167,7 +167,7 @@ const updateLeadStatus = async (req, res) => {
 	}
 };
 
-// Admin: Get all leads (Task 9)
+
 const getAllLeads = async (req, res) => {
 	try {
 		if (req.user.role !== "admin") {
@@ -192,6 +192,25 @@ const getAllLeads = async (req, res) => {
 	}
 };
 
+const getLeadsByCSR = async (req, res) => {
+	const { csrId } = req.params;
+
+	try {
+		const leads = await Lead.find({ assignedTo: csrId });
+		res.status(200).json({
+			success: true,
+			msg: `Leads fetched successfully for CSR: ${csrId}`,
+			data: leads,
+		});
+	} catch (error) {
+		res.status(400).json({
+			success: false,
+			msg: "Error occurred in fetching leads by CSR",
+			error: error.message,
+		});
+	}
+};
+
 module.exports = {
 	createLead,
 	getLeads,
@@ -201,4 +220,5 @@ module.exports = {
 	deleteLead,
 	updateLeadStatus,
 	getAllLeads,
+	getLeadsByCSR,
 };
