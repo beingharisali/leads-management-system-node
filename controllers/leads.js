@@ -1,6 +1,6 @@
 const Lead = require("../models/leads.js");
 
-// Create a new lead
+
 const createLead = async (req, res) => {
 	try {
 		const lead = await Lead.create(req.body);
@@ -18,10 +18,10 @@ const createLead = async (req, res) => {
 	}
 };
 
-// Get leads assigned to logged-in CSR
+
 const getLeads = async (req, res) => {
 	try {
-		const csrId = req.user.userId; // logged-in CSR
+		const csrId = req.user.userId;
 		const leads = await Lead.find({ assignedTo: csrId });
 		res.status(200).json({
 			success: true,
@@ -37,10 +37,10 @@ const getLeads = async (req, res) => {
 	}
 };
 
-// Get leads filtered by date (day/week/month)
+
 const getLeadsByDate = async (req, res) => {
 	const csrId = req.user.userId;
-	const { filter } = req.query; // filter = day / week / month
+	const { filter } = req.query; // day / week / month
 
 	let startDate;
 	const now = new Date();
@@ -82,7 +82,7 @@ const getLeadsByDate = async (req, res) => {
 	}
 };
 
-// Get single lead by ID
+
 const getSingleLead = async (req, res) => {
 	const id = req.params.id;
 	try {
@@ -120,7 +120,7 @@ const deleteLead = async (req, res) => {
 	}
 };
 
-// Update lead by ID
+
 const updateLead = async (req, res) => {
 	const id = req.params.id;
 	try {
@@ -142,11 +142,37 @@ const updateLead = async (req, res) => {
 	}
 };
 
+
+const updateLeadStatus = async (req, res) => {
+	const id = req.params.id;
+	const { status } = req.body;
+
+	try {
+		const lead = await Lead.findByIdAndUpdate(
+			id,
+			{ status },
+			{ new: true, runValidators: true }
+		);
+		res.status(200).json({
+			success: true,
+			msg: "Lead status updated successfully",
+			data: lead,
+		});
+	} catch (error) {
+		res.status(400).json({
+			success: false,
+			msg: "Error occurred in updating lead status",
+			error: error.message,
+		});
+	}
+};
+
 module.exports = {
 	createLead,
 	getLeads,
 	getLeadsByDate,
+	getSingleLead,
 	updateLead,
 	deleteLead,
-	getSingleLead
+	updateLeadStatus,
 };
