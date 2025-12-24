@@ -1,6 +1,6 @@
 const Lead = require("../models/leads.js");
 
-
+// Create a new lead
 const createLead = async (req, res) => {
 	try {
 		const lead = await Lead.create(req.body);
@@ -18,7 +18,7 @@ const createLead = async (req, res) => {
 	}
 };
 
-
+// Get leads assigned to logged-in CSR
 const getLeads = async (req, res) => {
 	try {
 		const csrId = req.user.userId;
@@ -37,10 +37,10 @@ const getLeads = async (req, res) => {
 	}
 };
 
-
+// Get leads filtered by date (day/week/month)
 const getLeadsByDate = async (req, res) => {
 	const csrId = req.user.userId;
-	const { filter } = req.query; // day / week / month
+	const { filter } = req.query;
 
 	let startDate;
 	const now = new Date();
@@ -82,7 +82,7 @@ const getLeadsByDate = async (req, res) => {
 	}
 };
 
-
+// Get single lead by ID
 const getSingleLead = async (req, res) => {
 	const id = req.params.id;
 	try {
@@ -120,7 +120,7 @@ const deleteLead = async (req, res) => {
 	}
 };
 
-
+// Update lead by ID
 const updateLead = async (req, res) => {
 	const id = req.params.id;
 	try {
@@ -142,7 +142,7 @@ const updateLead = async (req, res) => {
 	}
 };
 
-
+// Update lead status (Task 8)
 const updateLeadStatus = async (req, res) => {
 	const id = req.params.id;
 	const { status } = req.body;
@@ -167,6 +167,31 @@ const updateLeadStatus = async (req, res) => {
 	}
 };
 
+// Admin: Get all leads (Task 9)
+const getAllLeads = async (req, res) => {
+	try {
+		if (req.user.role !== "admin") {
+			return res.status(403).json({
+				success: false,
+				msg: "Access denied. Admins only.",
+			});
+		}
+
+		const leads = await Lead.find({});
+		res.status(200).json({
+			success: true,
+			msg: "All leads fetched successfully",
+			data: leads,
+		});
+	} catch (error) {
+		res.status(400).json({
+			success: false,
+			msg: "Error occurred in fetching all leads",
+			error: error.message,
+		});
+	}
+};
+
 module.exports = {
 	createLead,
 	getLeads,
@@ -175,4 +200,5 @@ module.exports = {
 	updateLead,
 	deleteLead,
 	updateLeadStatus,
+	getAllLeads,
 };
