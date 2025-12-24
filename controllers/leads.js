@@ -1,88 +1,100 @@
-const model = require("../models/leads.js");
+const Lead = require("../models/leads.js");
 
+// Create a new lead
 const createLead = async (req, res) => {
 	try {
-		const leads = await model.create(req.body);
+		const lead = await Lead.create(req.body);
 		res.status(201).json({
 			success: true,
-			msg: "lead created successfully",
-			leads: leads,
+			msg: "Lead created successfully",
+			data: lead,
 		});
 	} catch (error) {
-		res.status(401).json({
+		res.status(400).json({
 			success: false,
-			msg: "Error occured in creating lead",
-			error: error,
+			msg: "Error occurred in creating lead",
+			error: error.message,
 		});
 	}
 };
+
+// Get leads assigned to logged-in CSR
 const getLeads = async (req, res) => {
 	try {
-		const leads = await model.find({});
+		const csrId = req.user.userId; // logged-in CSR
+		const leads = await Lead.find({ assignedTo: csrId });
 		res.status(200).json({
 			success: true,
 			msg: "Leads fetched successfully",
-			leads: leads,
+			data: leads,
 		});
 	} catch (error) {
-		res.status(401).json({
+		res.status(400).json({
 			success: false,
-			msg: "error occured in fetching leads",
-			error: error,
+			msg: "Error occurred in fetching leads",
+			error: error.message,
 		});
 	}
 };
+
+// Get single lead by ID
 const getSingleLead = async (req, res) => {
-	const id = params.id;
+	const id = req.params.id;
 	try {
-		const leads = await model.findById({ id });
+		const lead = await Lead.findById(id);
 		res.status(200).json({
 			success: true,
-			msg: "lead fetched successfully",
-			leads: leads,
+			msg: "Lead fetched successfully",
+			data: lead,
 		});
 	} catch (error) {
 		res.status(400).json({
 			success: false,
-			msg: "error occured in fetching lead",
-			error: error,
+			msg: "Error occurred in fetching lead",
+			error: error.message,
 		});
 	}
 };
 
-const deletLead = async (req, res) => {
-	const id = params.id;
+// Delete lead by ID
+const deleteLead = async (req, res) => {
+	const id = req.params.id;
 	try {
-		const leads = await model.findByIdAndDelete({ id });
-		res.status(201).json({
+		const lead = await Lead.findByIdAndDelete(id);
+		res.status(200).json({
 			success: true,
-			msg: "lead deleted successfully",
-			leads: leads,
+			msg: "Lead deleted successfully",
+			data: lead,
 		});
 	} catch (error) {
 		res.status(400).json({
 			success: false,
-			msg: "error occured in deleting lead",
-			error: error,
+			msg: "Error occurred in deleting lead",
+			error: error.message,
 		});
 	}
 };
+
+// Update lead by ID
 const updateLead = async (req, res) => {
-	const id = params.id;
+	const id = req.params.id;
 	try {
-		const leads = await model.findByIdAndUpdate({ id });
-		res.status(201).json({
+		const lead = await Lead.findByIdAndUpdate(id, req.body, {
+			new: true,
+			runValidators: true,
+		});
+		res.status(200).json({
 			success: true,
-			msg: "lead updated successfully",
-			leads: leads,
+			msg: "Lead updated successfully",
+			data: lead,
 		});
 	} catch (error) {
 		res.status(400).json({
-			success: true,
-			msg: "Error occured in updating lead",
-			error: error,
+			success: false,
+			msg: "Error occurred in updating lead",
+			error: error.message,
 		});
 	}
 };
 
-module.exports = { createLead, getLeads, updateLead, deletLead, getSingleLead };
+module.exports = { createLead, getLeads, updateLead, deleteLead, getSingleLead };

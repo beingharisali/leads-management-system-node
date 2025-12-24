@@ -18,7 +18,7 @@ const leadSchema = new mongoose.Schema(
 			required: true,
 		},
 		source: {
-			type: string,
+			type: String,
 		},
 		assaignedTo: {
 			type: mongoose.Schema.ObjectId,
