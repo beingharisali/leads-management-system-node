@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const UserSchema = new mongoose.Schema({
-	firstName: {
+	name: {
 		type: String,
 		required: [true, "Please provide name"],
 		maxlength: 50,
@@ -12,10 +12,6 @@ const UserSchema = new mongoose.Schema({
 	email: {
 		type: String,
 		required: [true, "Please provide email"],
-		match: [
-			/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
-			"Please provide a valid email",
-		],
 		unique: true,
 	},
 	password: {
@@ -25,15 +21,16 @@ const UserSchema = new mongoose.Schema({
 	},
 	lastName: {
 		type: String,
-		trim: true,
-		maxlength: 20,
 		default: "lastName",
 	},
 	location: {
 		type: String,
-		trim: true,
-		maxlength: 20,
 		default: "my city",
+	},
+	role: {              // <-- add this
+		type: String,
+		enum: ["user", "admin"],
+		default: "user",
 	},
 });
 
@@ -45,17 +42,14 @@ UserSchema.pre("save", async function () {
 
 UserSchema.methods.createJWT = function () {
 	return jwt.sign(
-		{ userId: this._id, name: this.name },
+		{ userId: this._id, name: this.name, role: this.role }, // <-- include role
 		process.env.JWT_SECRET,
-		{
-			expiresIn: process.env.JWT_LIFETIME,
-		}
+		{ expiresIn: process.env.JWT_LIFETIME }
 	);
 };
 
 UserSchema.methods.comparePassword = async function (canditatePassword) {
-	const isMatch = await bcrypt.compare(canditatePassword, this.password);
-	return isMatch;
+	return await bcrypt.compare(canditatePassword, this.password);
 };
 
 module.exports = mongoose.model("User", UserSchema);

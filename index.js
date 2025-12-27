@@ -24,7 +24,7 @@ app.use(
 		origin: "http://localhost:3000", // Allow requests from the frontend
 	})
 );
-app.use(express.static(path.resolve(__dirname, "./client/build")));
+// app.use(express.static(path.resolve(__dirname, "./client/build")));
 app.use(express.json());
 app.use(helmet());
 
