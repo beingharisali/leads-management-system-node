@@ -1,5 +1,5 @@
 const Lead = require("../models/leads.js");
-
+const Sale = require("../models/Sale.js");
 // Create a new lead
 const createLead = async (req, res) => {
 	try {
@@ -50,7 +50,7 @@ const getLeadsByDate = async (req, res) => {
 			startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 			break;
 		case "week":
-			const firstDayOfWeek = now.getDate() - now.getDay(); // Sunday = 0
+			const firstDayOfWeek = now.getDate() - now.getDay();
 			startDate = new Date(now.getFullYear(), now.getMonth(), firstDayOfWeek);
 			break;
 		case "month":
@@ -120,7 +120,6 @@ const deleteLead = async (req, res) => {
 	}
 };
 
-
 const updateLead = async (req, res) => {
 	const id = req.params.id;
 	try {
@@ -141,7 +140,6 @@ const updateLead = async (req, res) => {
 		});
 	}
 };
-
 
 const updateLeadStatus = async (req, res) => {
 	const id = req.params.id;
@@ -167,7 +165,54 @@ const updateLeadStatus = async (req, res) => {
 	}
 };
 
+// ===============================
+// ✅ TASK-19: Convert Lead to Sale
+// ===============================
+const convertLeadToSale = async (req, res) => {
+	const { id } = req.params; // lead id
+	const { amount } = req.body;
 
+	if (!amount) {
+		return res.status(400).json({
+			success: false,
+			msg: "Please provide sale amount",
+		});
+	}
+
+	try {
+		const lead = await Lead.findById(id);
+		if (!lead) {
+			return res.status(404).json({
+				success: false,
+				msg: "Lead not found",
+			});
+		}
+
+		const sale = await Sale.create({
+			lead: lead._id,
+			csr: req.user.userId,
+			amount,
+			status: "completed",
+		});
+
+		lead.status = "converted";
+		await lead.save();
+
+		res.status(201).json({
+			success: true,
+			msg: "Lead converted to sale successfully",
+			data: sale,
+		});
+	} catch (error) {
+		res.status(400).json({
+			success: false,
+			msg: "Error converting lead to sale",
+			error: error.message,
+		});
+	}
+};
+
+// Admin: Get all leads
 const getAllLeads = async (req, res) => {
 	try {
 		if (req.user.role !== "admin") {
@@ -221,4 +266,5 @@ module.exports = {
 	updateLeadStatus,
 	getAllLeads,
 	getLeadsByCSR,
+	convertLeadToSale, // 👈 EXPORT ADDED
 };
