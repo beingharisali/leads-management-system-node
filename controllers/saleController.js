@@ -1,5 +1,6 @@
 const Sale = require("../models/Sale.js");
 
+// Task-20: Get sales by CSR (Admin + CSR)
 const getSalesByCSR = async (req, res) => {
     const { csrId } = req.params;
 
@@ -26,6 +27,7 @@ const getSalesByCSR = async (req, res) => {
     }
 };
 
+// Task-21: Get sales by date filter
 const getSalesByDate = async (req, res) => {
     const { start, end } = req.query;
 
@@ -63,6 +65,7 @@ const getSalesByDate = async (req, res) => {
     }
 };
 
+// Task-22: Admin - Get all sales
 const getAllSales = async (req, res) => {
     try {
         if (req.user.role !== "admin") {
@@ -89,8 +92,38 @@ const getAllSales = async (req, res) => {
     }
 };
 
+// Task-23: Admin - View sales by CSR
+const adminGetSalesByCSR = async (req, res) => {
+    const { csrId } = req.params;
+
+    try {
+        if (req.user.role !== "admin") {
+            return res.status(403).json({
+                success: false,
+                msg: "Admin only",
+            });
+        }
+
+        const sales = await Sale.find({ csr: csrId })
+            .populate("lead", "name email")
+            .populate("csr", "name email");
+
+        res.status(200).json({
+            success: true,
+            total: sales.length,
+            data: sales,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            msg: error.message,
+        });
+    }
+};
+
 module.exports = {
     getSalesByCSR,
     getSalesByDate,
     getAllSales,
+    adminGetSalesByCSR,
 };
