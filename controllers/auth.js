@@ -2,11 +2,18 @@ const User = require('../models/User');
 const { StatusCodes } = require('http-status-codes');
 const { BadRequestError, UnauthenticatedError } = require('../errors');
 
-// Register new user (default role: user, server-side admin creation possible)
+// Register new user (CSR or Admin)
 const register = async (req, res) => {
-  // Agar API se admin create karna ho to req.body.role me "admin" bhej sakte ho
-  const role = req.body.role || "user"; // default user
-  const user = await User.create({ ...req.body, role: "admin" });
+  // Role from request body OR default "csr"
+  const role = req.body.role || "csr"; // default CSR
+  const user = await User.create({
+    name: req.body.name,
+    email: req.body.email,
+    password: req.body.password,
+    lastName: req.body.lastName,
+    location: req.body.location,
+    role // use the variable, no hardcoded "admin"
+  });
 
   const token = user.createJWT();
   res.status(StatusCodes.CREATED).json({
@@ -15,7 +22,7 @@ const register = async (req, res) => {
       lastName: user.lastName,
       location: user.location,
       name: user.name,
-      role: user.role, // role response me bhi
+      role: user.role, // role response me correct aayega
       token,
     },
   });
@@ -45,7 +52,7 @@ const login = async (req, res) => {
       lastName: user.lastName,
       location: user.location,
       name: user.name,
-      role: user.role, // role response me bhi
+      role: user.role,
       token,
     },
   });
@@ -73,7 +80,7 @@ const updateUser = async (req, res) => {
       lastName: user.lastName,
       location: user.location,
       name: user.name,
-      role: user.role, // role response me
+      role: user.role,
       token,
     },
   });

@@ -1,9 +1,34 @@
+const mongoose = require("mongoose"); // ✅ add on top
 const Lead = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
-// Create a new lead
+
+// ===============================
+// ✅ TASK-06: Create a new lead
+// ===============================
+// ===============================
+// ✅ TASK-06: Create a new lead
+// ===============================
 const createLead = async (req, res) => {
 	try {
-		const lead = await Lead.create(req.body);
+		let { assignedTo, ...rest } = req.body;
+
+		if (req.user.role === "admin") {
+			// Admin creates lead and must provide assignedTo (CSR ID)
+			if (!assignedTo) {
+				return res.status(400).json({
+					success: false,
+					msg: "Admin must specify assignedTo (CSR ID)",
+				});
+			}
+			// Correct way to convert string to ObjectId in Mongoose v7+
+			assignedTo = new mongoose.Types.ObjectId(assignedTo);
+		} else {
+			// CSR khud lead create kare to assignedTo = khud
+			assignedTo = req.user.userId;
+		}
+
+		const lead = await Lead.create({ ...rest, assignedTo });
+
 		res.status(201).json({
 			success: true,
 			msg: "Lead created successfully",
@@ -120,6 +145,7 @@ const deleteLead = async (req, res) => {
 	}
 };
 
+// Update lead
 const updateLead = async (req, res) => {
 	const id = req.params.id;
 	try {
@@ -141,6 +167,7 @@ const updateLead = async (req, res) => {
 	}
 };
 
+// Update lead status
 const updateLeadStatus = async (req, res) => {
 	const id = req.params.id;
 	const { status } = req.body;
@@ -165,11 +192,9 @@ const updateLeadStatus = async (req, res) => {
 	}
 };
 
-// ===============================
-// ✅ TASK-19: Convert Lead to Sale
-// ===============================
+// Convert lead to sale
 const convertLeadToSale = async (req, res) => {
-	const { id } = req.params; // lead id
+	const { id } = req.params;
 	const { amount } = req.body;
 
 	if (!amount) {
@@ -237,6 +262,7 @@ const getAllLeads = async (req, res) => {
 	}
 };
 
+// Admin: Get leads by CSR
 const getLeadsByCSR = async (req, res) => {
 	const { csrId } = req.params;
 
@@ -266,5 +292,5 @@ module.exports = {
 	updateLeadStatus,
 	getAllLeads,
 	getLeadsByCSR,
-	convertLeadToSale, // 👈 EXPORT ADDED
+	convertLeadToSale,
 };

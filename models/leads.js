@@ -6,7 +6,6 @@ const leadSchema = new mongoose.Schema(
 			type: String,
 			required: [true, "Enter the name of lead"],
 			minlength: 3,
-			maxlength: 50,
 		},
 		phone: {
 			type: String,
@@ -20,10 +19,15 @@ const leadSchema = new mongoose.Schema(
 		source: {
 			type: String,
 		},
-		assaignedTo: {
-			type: mongoose.Schema.ObjectId,
-			required: true,
-			ref: "User",
+		assignedTo: {
+			type: mongoose.Schema.Types.ObjectId, // ✅ ObjectId type
+			ref: "User",                          // ✅ Reference to User (CSR)
+			required: true
+		},
+		status: {
+			type: String,
+			enum: ["new", "contacted", "converted"],
+			default: "new",
 		},
 	},
 	{ timestamps: true }
