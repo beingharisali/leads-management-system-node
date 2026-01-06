@@ -21,7 +21,7 @@ const UserSchema = new mongoose.Schema({
 	},
 	lastName: {
 		type: String,
-		default: "lastName",
+		default: "lastName",	
 	},
 	location: {
 		type: String,
