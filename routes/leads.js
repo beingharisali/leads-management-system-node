@@ -14,7 +14,7 @@ const {
 	bulkInsertLeads,   // Task 26
 } = require("../controllers/leads");
 
-const { parseExcelFile } = require("../controllers/parseExcel"); // Task 25
+const { parseExcelFile, validateExcelData } = require("../controllers/parseExcel"); // Task 25 + Task 27
 const { auth, authorizeRoles } = require("../middleware/authentication");
 const upload = require("../middleware/upload"); // Task 24: Multer
 
@@ -55,6 +55,15 @@ router.post(
 	authorizeRoles("admin"),
 	upload.single("file"),
 	bulkInsertLeads
+);
+
+// ----------------- Task 27: Validate Excel Data -----------------
+router.post(
+	"/validate-excel",
+	auth,
+	authorizeRoles("admin"),
+	upload.single("file"),
+	validateExcelData
 );
 
 module.exports = router;
