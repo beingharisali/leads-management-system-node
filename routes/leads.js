@@ -10,12 +10,13 @@ const {
 	deleteLead,
 	getAllLeads,
 	getLeadsByCSR,
-	uploadLeads,      // Task 24: Controller for Excel upload
+	uploadLeads,       // Task 24
+	bulkInsertLeads,   // Task 26
 } = require("../controllers/leads");
 
-const { parseExcelFile } = require("../controllers/parseExcel"); // Task 25: Parse Excel controller
+const { parseExcelFile } = require("../controllers/parseExcel"); // Task 25
 const { auth, authorizeRoles } = require("../middleware/authentication");
-const upload = require("../middleware/upload"); // Task 24: Multer middleware for Excel files
+const upload = require("../middleware/upload"); // Task 24: Multer
 
 // ----------------- CSR Routes -----------------
 router.get("/get-leads", auth, getLeads);
@@ -34,8 +35,8 @@ router.post(
 	"/upload-excel",
 	auth,
 	authorizeRoles("admin"),
-	upload.single("file"), // Multer middleware
-	uploadLeads            // Controller function
+	upload.single("file"),
+	uploadLeads
 );
 
 // ----------------- Task 25: Parse Excel File -----------------
@@ -43,8 +44,17 @@ router.post(
 	"/parse-excel",
 	auth,
 	authorizeRoles("admin"),
-	upload.single("file"), // Multer middleware
-	parseExcelFile         // Controller function
+	upload.single("file"),
+	parseExcelFile
+);
+
+// ----------------- Task 26: Bulk Insert Leads from Excel -----------------
+router.post(
+	"/bulk-insert-excel",
+	auth,
+	authorizeRoles("admin"),
+	upload.single("file"),
+	bulkInsertLeads
 );
 
 module.exports = router;
