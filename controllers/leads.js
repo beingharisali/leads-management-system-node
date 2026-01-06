@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const Lead = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
 const xlsx = require("xlsx"); // Task 24 ke liye Excel parse
+const XLSX = require("xlsx");
+const path = require("path");
 
 // ===============================
 // ✅ TASK-06: Create a new lead
@@ -211,13 +213,68 @@ const bulkInsertLeads = async (req, res) => {
 			source: row.source || "",
 			phone: row.phone || "",
 			status: row.status || "new",
-			assignedTo: req.body.assignedTo ? new mongoose.Types.ObjectId(req.body.assignedTo) : req.user.role === "csr" ? new mongoose.Types.ObjectId(req.user.userId) : null,
+			assignedTo: req.body.assignedTo
+				? new mongoose.Types.ObjectId(req.body.assignedTo)
+				: req.user.role === "csr"
+					? new mongoose.Types.ObjectId(req.user.userId)
+					: null,
 		}));
 
 		const insertedLeads = await Lead.insertMany(leadsToInsert);
 		res.status(201).json({ success: true, msg: `${insertedLeads.length} leads inserted successfully`, data: insertedLeads });
 	} catch (error) {
 		res.status(500).json({ success: false, msg: "Error in bulk inserting leads", error: error.message });
+	}
+};
+
+// ===============================
+// ✅ TASK-27: Validate Excel Data before insert
+// ===============================
+const validateExcelData = async (req, res) => {
+	try {
+		if (!req.file) {
+			return res.status(400).json({ success: false, msg: "No file uploaded" });
+		}
+
+		// Uploaded file path
+		const filePath = path.join(__dirname, "../uploads", req.file.filename);
+
+		// Excel file read
+		const workbook = XLSX.readFile(filePath);
+		const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+		// Convert to JSON
+		const data = XLSX.utils.sheet_to_json(sheet);
+
+		if (!data.length) {
+			return res.status(400).json({ success: false, msg: "Excel file is empty" });
+		}
+
+		const validRows = [];
+		const invalidRows = [];
+
+		data.forEach((row, index) => {
+			const { name, phone, course, source } = row;
+
+			// Basic validation: name, phone, course required
+			if (name && phone && course) {
+				validRows.push({ ...row, rowNumber: index + 2 }); // Excel headers row=1
+			} else {
+				invalidRows.push({ ...row, rowNumber: index + 2 });
+			}
+		});
+
+		res.status(200).json({
+			success: true,
+			msg: "Excel validation completed",
+			totalRows: data.length,
+			validRows,
+			invalidRows,
+			validCount: validRows.length,
+			invalidCount: invalidRows.length,
+		});
+	} catch (error) {
+		res.status(500).json({ success: false, msg: "Error validating Excel file", error: error.message });
 	}
 };
 
@@ -232,5 +289,6 @@ module.exports = {
 	getAllLeads,
 	getLeadsByCSR,
 	uploadLeads,       // Task 24
-	bulkInsertLeads,   // Task 26
+	bulkInsertLeads,   // Task 26 added
+	validateExcelData, // Task 27
 };
