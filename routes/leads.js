@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
+// ================= Controllers =================
 const {
 	createLead,
 	getLeads,
@@ -11,14 +12,20 @@ const {
 	getAllLeads,
 	getLeadsByCSR,
 	uploadLeads,       // Task 24
-	bulkInsertLeads,   // Task 26
+	bulkInsertLeads,   // Task 26 + Task 28 (with invalid rows handling)
 } = require("../controllers/leads");
 
-const { parseExcelFile, validateExcelData } = require("../controllers/parseExcel"); // Task 25 + Task 27
-const { auth, authorizeRoles } = require("../middleware/authentication");
-const upload = require("../middleware/upload"); // Task 24: Multer
+// Excel Controllers
+const {
+	parseExcelFile,    // Task 25
+	validateExcelData, // Task 27
+} = require("../controllers/parseExcel");
 
-// ----------------- CSR Routes -----------------
+// Middleware
+const { auth, authorizeRoles } = require("../middleware/authentication");
+const upload = require("../middleware/upload");
+
+// ================= CSR Routes =================
 router.get("/get-leads", auth, getLeads);
 router.get("/get-leads-by-date", auth, getLeadsByDate);
 router.post("/create-leads", auth, createLead);
@@ -26,11 +33,22 @@ router.get("/get-single-leads/:id", auth, getSingleLead);
 router.patch("/update-leads/:id", auth, updateLead);
 router.delete("/delete-leads/:id", auth, deleteLead);
 
-// ----------------- Admin Routes -----------------
-router.get("/get-all-leads", auth, authorizeRoles("admin"), getAllLeads);
-router.get("/get-leads-by-csr/:csrId", auth, authorizeRoles("admin"), getLeadsByCSR);
+// ================= Admin Routes =================
+router.get(
+	"/get-all-leads",
+	auth,
+	authorizeRoles("admin"),
+	getAllLeads
+);
 
-// ----------------- Task 24: Excel Upload -----------------
+router.get(
+	"/get-leads-by-csr/:csrId",
+	auth,
+	authorizeRoles("admin"),
+	getLeadsByCSR
+);
+
+// ================= Task 24: Upload Excel =================
 router.post(
 	"/upload-excel",
 	auth,
@@ -39,7 +57,7 @@ router.post(
 	uploadLeads
 );
 
-// ----------------- Task 25: Parse Excel File -----------------
+// ================= Task 25: Parse Excel =================
 router.post(
 	"/parse-excel",
 	auth,
@@ -48,7 +66,7 @@ router.post(
 	parseExcelFile
 );
 
-// ----------------- Task 26: Bulk Insert Leads from Excel -----------------
+// ================= Task 26 + 28: Bulk Insert (with error handling) =================
 router.post(
 	"/bulk-insert-excel",
 	auth,
@@ -57,7 +75,7 @@ router.post(
 	bulkInsertLeads
 );
 
-// ----------------- Task 27: Validate Excel Data -----------------
+// ================= Task 27: Validate Excel =================
 router.post(
 	"/validate-excel",
 	auth,
