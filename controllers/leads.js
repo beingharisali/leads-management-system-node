@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Lead = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
+const xlsx = require("xlsx"); // Task 24 ke liye Excel parse
 
 // ===============================
 // ✅ TASK-06: Create a new lead
@@ -124,11 +125,7 @@ const getSingleLead = async (req, res) => {
 			});
 		}
 
-		// CSR sirf apni lead dekh sakta
-		if (
-			req.user.role === "csr" &&
-			lead.assignedTo.toString() !== req.user.userId
-		) {
+		if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
 			return res.status(403).json({
 				success: false,
 				msg: "Access denied",
@@ -163,10 +160,7 @@ const updateLead = async (req, res) => {
 			});
 		}
 
-		if (
-			req.user.role === "csr" &&
-			lead.assignedTo.toString() !== req.user.userId
-		) {
+		if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
 			return res.status(403).json({
 				success: false,
 				msg: "You cannot update this lead",
@@ -207,10 +201,7 @@ const deleteLead = async (req, res) => {
 			});
 		}
 
-		if (
-			req.user.role === "csr" &&
-			lead.assignedTo.toString() !== req.user.userId
-		) {
+		if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
 			return res.status(403).json({
 				success: false,
 				msg: "You cannot delete this lead",
@@ -255,11 +246,7 @@ const convertLeadToSale = async (req, res) => {
 			});
 		}
 
-		// CSR sirf apni assigned lead convert kare
-		if (
-			req.user.role === "csr" &&
-			lead.assignedTo.toString() !== req.user.userId
-		) {
+		if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
 			return res.status(403).json({
 				success: false,
 				msg: "You cannot convert leads not assigned to you",
@@ -324,6 +311,46 @@ const getLeadsByCSR = async (req, res) => {
 	});
 };
 
+// ===============================
+// ✅ TASK-24: Upload leads via Excel (Admin only)
+// ===============================
+const uploadLeads = async (req, res) => {
+	try {
+		if (!req.file) {
+			return res.status(400).json({ success: false, msg: "No file uploaded" });
+		}
+
+		const workbook = xlsx.readFile(req.file.path);
+		const sheetName = workbook.SheetNames[0];
+		const sheet = workbook.Sheets[sheetName];
+		const data = xlsx.utils.sheet_to_json(sheet);
+
+		// Insert leads
+		const leadsToInsert = data.map((row) => ({
+			name: row.name,
+			phone: row.phone,
+			course: row.course,
+			source: row.source,
+			status: "new",
+			assignedTo: req.body.assignedTo ? new mongoose.Types.ObjectId(req.body.assignedTo) : null,
+		}));
+
+		const insertedLeads = await Lead.insertMany(leadsToInsert);
+
+		res.status(201).json({
+			success: true,
+			msg: `${insertedLeads.length} leads uploaded successfully`,
+			data: insertedLeads,
+		});
+	} catch (error) {
+		res.status(400).json({
+			success: false,
+			msg: "Error uploading leads from Excel",
+			error: error.message,
+		});
+	}
+};
+
 module.exports = {
 	createLead,
 	getLeads,
@@ -334,4 +361,5 @@ module.exports = {
 	convertLeadToSale,
 	getAllLeads,
 	getLeadsByCSR,
+	uploadLeads, // Task 24
 };
