@@ -1,14 +1,29 @@
 const express = require("express");
 const router = express.Router();
-const { getCsrDashboardStats } = require("../controllers/dashboardController");
-const { auth, authorizeRoles } = require("../middleware/authentication");
-const role = require("../middleware/role");
 
+// Controllers
+const {
+    getCsrDashboardStats,
+    getAdminDashboardStats
+} = require("../controllers/dashboardController");
+
+// Middleware
+const { auth, authorizeRoles } = require("../middleware/authentication");
+
+// ================= CSR Dashboard =================
 router.get(
     "/csr-stats",
     auth,
-    role("csr"),
+    authorizeRoles("csr"),   // CSR-only access
     getCsrDashboardStats
+);
+
+// ================= Admin Dashboard =================
+router.get(
+    "/admin-stats",
+    auth,
+    authorizeRoles("admin"),  // Admin-only access
+    getAdminDashboardStats
 );
 
 module.exports = router;
