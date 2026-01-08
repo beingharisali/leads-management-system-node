@@ -16,6 +16,8 @@ const connectDB = require("./db/connect");
 const authRouter = require("./routes/auth");
 const leadRoutes = require("./routes/leads");
 const saleRoutes = require("./routes/saleRoutes"); // ✅ Task-20 added
+const dashboardRoutes = require("./routes/dashboardRoutes");
+
 
 // error handler
 const notFoundMiddleware = require("./middleware/not-found");
@@ -37,6 +39,8 @@ app.use(xss());
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/lead", leadRoutes);
 app.use("/api/v1/sale", saleRoutes); // ✅ Task-20 route mounted
+app.use("/api/v1/dashboard", dashboardRoutes);
+
 
 // error handling middlewares
 app.use(notFoundMiddleware);
