@@ -4,7 +4,8 @@ const router = express.Router();
 // Controllers
 const {
     getCsrDashboardStats,
-    getAdminDashboardStats
+    getAdminDashboardStats,
+    getCsrPerformanceComparison  // ✅ added for LEADS-SYSTEM-33
 } = require("../controllers/dashboardController");
 
 // Middleware
@@ -24,6 +25,14 @@ router.get(
     auth,
     authorizeRoles("admin"),  // Admin-only access
     getAdminDashboardStats
+);
+
+// ================= Admin: CSR Performance Comparison =================
+router.get(
+    "/csr-performance",
+    auth,
+    authorizeRoles("admin"),  // Admin-only access
+    getCsrPerformanceComparison
 );
 
 module.exports = router;

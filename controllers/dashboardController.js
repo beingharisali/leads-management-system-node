@@ -1,5 +1,6 @@
 const Lead = require("../models/leads");
 const Sale = require("../models/Sale");
+const User = require("../models/User"); // For CSR data
 
 // ================= CSR Dashboard Stats =================
 exports.getCsrDashboardStats = async (req, res) => {
@@ -26,22 +27,17 @@ exports.getCsrDashboardStats = async (req, res) => {
 // ================= Admin Dashboard Stats =================
 exports.getAdminDashboardStats = async (req, res) => {
     try {
-        // Total leads overall
         const totalLeads = await Lead.countDocuments();
-        // Total sales overall
         const totalSales = await Sale.countDocuments();
 
-        // Leads grouped by status
         const leadsByStatus = await Lead.aggregate([
             { $group: { _id: "$status", total: { $sum: 1 } } }
         ]);
 
-        // Leads grouped by CSR
         const leadsByCSR = await Lead.aggregate([
             { $group: { _id: "$assignedTo", total: { $sum: 1 } } }
         ]);
 
-        // Sales grouped by CSR
         const salesByCSR = await Sale.aggregate([
             { $group: { _id: "$csr", totalSales: { $sum: 1 } } }
         ]);
@@ -54,6 +50,36 @@ exports.getAdminDashboardStats = async (req, res) => {
             leadsByCSR,
             salesByCSR
         });
+    } catch (error) {
+        res.status(500).json({ success: false, msg: error.message });
+    }
+};
+
+// ================= CSR Performance Comparison (Admin Only) =================
+exports.getCsrPerformanceComparison = async (req, res) => {
+    try {
+        // Get all CSRs
+        const csrs = await User.find({ role: "csr" }).select("_id name email");
+
+        const performanceData = await Promise.all(
+            csrs.map(async (csr) => {
+                const totalLeads = await Lead.countDocuments({ assignedTo: csr._id });
+                const totalSales = await Sale.countDocuments({ csr: csr._id });
+                const conversionRate =
+                    totalLeads === 0 ? 0 : ((totalSales / totalLeads) * 100).toFixed(2);
+
+                return {
+                    csrId: csr._id,
+                    name: csr.name,
+                    email: csr.email,
+                    totalLeads,
+                    totalSales,
+                    conversionRate: `${conversionRate}%`
+                };
+            })
+        );
+
+        res.status(200).json({ success: true, data: performanceData });
     } catch (error) {
         res.status(500).json({ success: false, msg: error.message });
     }
