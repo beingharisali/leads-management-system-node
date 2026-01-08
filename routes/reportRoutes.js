@@ -1,8 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const { getLeadsGrouped } = require("../controllers/reportController");
-const auth = require("../middleware/auth");
 
-router.get("/leads", auth, getLeadsGrouped);
+// ================= Controllers =================
+const { getLeadsGrouped, getSalesGrouped } = require("../controllers/reportController");
+
+// ================= Middleware =================
+const { auth, authorizeRoles } = require("../middleware/authentication");
+
+// ================= Routes =================
+router.get("/leads", auth, authorizeRoles("admin"), getLeadsGrouped);
+router.get("/sales", auth, authorizeRoles("admin"), getSalesGrouped);
 
 module.exports = router;
