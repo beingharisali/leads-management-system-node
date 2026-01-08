@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { getCsrDashboardStats } = require("../controllers/dashboardController");
-const auth = require("../middleware/auth");
+const { auth, authorizeRoles } = require("../middleware/authentication");
 const role = require("../middleware/role");
 
 router.get(

@@ -22,22 +22,22 @@ const {
 } = require("../controllers/parseExcel");
 
 // Middleware
-const { auth, authorizeRoles } = require("../middleware/authentication");
+const { auth, authorizeRoles } = require("../middleware/authentication"); // ✅ destructured import
 const upload = require("../middleware/upload");
 
 // ================= CSR Routes =================
 router.get("/get-leads", auth, getLeads);
 router.get("/get-leads-by-date", auth, getLeadsByDate);
-router.post("/create-leads", auth, createLead);
+router.post("/create-leads", auth, authorizeRoles("csr", "admin"), createLead); // ✅ csr + admin can create
 router.get("/get-single-leads/:id", auth, getSingleLead);
-router.patch("/update-leads/:id", auth, updateLead);
-router.delete("/delete-leads/:id", auth, deleteLead);
+router.patch("/update-leads/:id", auth, authorizeRoles("csr", "admin"), updateLead);
+router.delete("/delete-leads/:id", auth, authorizeRoles("csr", "admin"), deleteLead);
 
 // ================= Admin Routes =================
 router.get(
 	"/get-all-leads",
 	auth,
-	authorizeRoles("admin"),
+	authorizeRoles("admin"), // ✅ admin-only
 	getAllLeads
 );
 
