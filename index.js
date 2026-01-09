@@ -23,6 +23,8 @@ const reportRoutes = require("./routes/reportRoutes");
 // error handler
 const notFoundMiddleware = require("./middleware/not-found");
 const errorHandlerMiddleware = require("./middleware/error-handler");
+const standardResponse = require("./middleware/standardResponse");
+
 
 // app.set('trust proxy', 1);
 app.use(
@@ -35,6 +37,8 @@ app.use(
 app.use(express.json());
 app.use(helmet());
 app.use(xss());
+app.use(standardResponse);
+
 
 // routes
 app.use("/api/v1/auth", authRouter);

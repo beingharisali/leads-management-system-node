@@ -10,7 +10,12 @@ const { BadRequestError, NotFoundError } = require("../errors");
 // ===============================
 const getAllLeads = asyncWrapper(async (req, res) => {
 	const leads = await Lead.find({});
-	res.status(200).json({ success: true, data: leads });
+	res.status(200).json({
+		success: true,
+		message: "All leads fetched successfully",
+		data: leads,
+		count: leads.length,
+	});
 });
 
 // ===============================
@@ -18,7 +23,12 @@ const getAllLeads = asyncWrapper(async (req, res) => {
 // ===============================
 const getLeadsByCSR = asyncWrapper(async (req, res) => {
 	const leads = await Lead.find({ assignedTo: req.params.csrId });
-	res.status(200).json({ success: true, data: leads });
+	res.status(200).json({
+		success: true,
+		message: "Leads for the specified CSR fetched successfully",
+		data: leads,
+		count: leads.length,
+	});
 });
 
 // ===============================
@@ -35,7 +45,11 @@ const createLead = asyncWrapper(async (req, res) => {
 	}
 
 	const lead = await Lead.create({ ...rest, assignedTo });
-	res.status(201).json({ success: true, msg: "Lead created successfully", data: lead });
+	res.status(201).json({
+		success: true,
+		message: "Lead created successfully",
+		data: lead,
+	});
 });
 
 // ===============================
@@ -43,7 +57,12 @@ const createLead = asyncWrapper(async (req, res) => {
 // ===============================
 const getLeads = asyncWrapper(async (req, res) => {
 	const leads = await Lead.find({ assignedTo: req.user.userId });
-	res.status(200).json({ success: true, data: leads });
+	res.status(200).json({
+		success: true,
+		message: "Leads fetched successfully",
+		data: leads,
+		count: leads.length,
+	});
 });
 
 // ===============================
@@ -72,7 +91,12 @@ const getLeadsByDate = asyncWrapper(async (req, res) => {
 		assignedTo: req.user.userId,
 		createdAt: { $gte: startDate },
 	});
-	res.status(200).json({ success: true, data: leads });
+	res.status(200).json({
+		success: true,
+		message: "Leads fetched successfully by date filter",
+		data: leads,
+		count: leads.length,
+	});
 });
 
 // ===============================
@@ -86,7 +110,11 @@ const getSingleLead = asyncWrapper(async (req, res) => {
 		throw new BadRequestError("Access denied");
 	}
 
-	res.status(200).json({ success: true, data: lead });
+	res.status(200).json({
+		success: true,
+		message: "Lead fetched successfully",
+		data: lead,
+	});
 });
 
 // ===============================
@@ -104,7 +132,11 @@ const updateLead = asyncWrapper(async (req, res) => {
 		new: true,
 		runValidators: true,
 	});
-	res.status(200).json({ success: true, data: updatedLead });
+	res.status(200).json({
+		success: true,
+		message: "Lead updated successfully",
+		data: updatedLead,
+	});
 });
 
 // ===============================
@@ -119,7 +151,10 @@ const deleteLead = asyncWrapper(async (req, res) => {
 	}
 
 	await lead.deleteOne();
-	res.status(200).json({ success: true, msg: "Lead deleted" });
+	res.status(200).json({
+		success: true,
+		message: "Lead deleted successfully",
+	});
 });
 
 // ===============================
@@ -142,7 +177,11 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
 	lead.status = "converted";
 	await lead.save();
 
-	res.status(201).json({ success: true, data: sale });
+	res.status(201).json({
+		success: true,
+		message: "Lead converted to sale successfully",
+		data: sale,
+	});
 });
 
 // ===============================
@@ -163,7 +202,11 @@ const uploadLeads = asyncWrapper(async (req, res) => {
 	}));
 
 	const inserted = await Lead.insertMany(leads);
-	res.status(201).json({ success: true, count: inserted.length });
+	res.status(201).json({
+		success: true,
+		message: "Leads uploaded successfully",
+		count: inserted.length,
+	});
 });
 
 // ===============================
@@ -187,6 +230,7 @@ const validateExcelData = asyncWrapper(async (req, res) => {
 
 	res.status(200).json({
 		success: true,
+		message: "Excel data validated successfully",
 		validCount: validRows.length,
 		invalidCount: invalidRows.length,
 		validRows,
@@ -233,6 +277,7 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
 
 	res.status(201).json({
 		success: true,
+		message: "Bulk insert completed",
 		insertedCount: inserted.length,
 		skippedCount: invalidRows.length,
 		skippedRows: invalidRows,
