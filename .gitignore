@@ -1,2 +1,15 @@
+
 /node_modules
+
 .env
+
+*.log
+
+*.tmp
+*.temp
+
+.vscode/
+.idea/
+
+.DS_Store
+Thumbs.db
