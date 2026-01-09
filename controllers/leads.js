@@ -1,82 +1,55 @@
 const mongoose = require("mongoose");
+const xlsx = require("xlsx");
 const Lead = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
-const xlsx = require("xlsx");
+const asyncWrapper = require("../middleware/async"); // Task 34
+const { BadRequestError, NotFoundError } = require("../errors");
+
 // ===============================
 // Admin: Get all leads
 // ===============================
-const getAllLeads = async (req, res) => {
-	try {
-		const leads = await Lead.find({});
-		res.status(200).json({ success: true, data: leads });
-	} catch (error) {
-		res.status(500).json({ success: false, error: error.message });
-	}
-};
+const getAllLeads = asyncWrapper(async (req, res) => {
+	const leads = await Lead.find({});
+	res.status(200).json({ success: true, data: leads });
+});
 
 // ===============================
 // Admin: Get leads by CSR
 // ===============================
-const getLeadsByCSR = async (req, res) => {
-	try {
-		const leads = await Lead.find({ assignedTo: req.params.csrId });
-		res.status(200).json({ success: true, data: leads });
-	} catch (error) {
-		res.status(500).json({ success: false, error: error.message });
-	}
-};
+const getLeadsByCSR = asyncWrapper(async (req, res) => {
+	const leads = await Lead.find({ assignedTo: req.params.csrId });
+	res.status(200).json({ success: true, data: leads });
+});
 
 // ===============================
 // TASK-06: Create a new lead
 // ===============================
-const createLead = async (req, res) => {
-	try {
-		let { assignedTo, ...rest } = req.body;
+const createLead = asyncWrapper(async (req, res) => {
+	let { assignedTo, ...rest } = req.body;
 
-		if (req.user.role === "admin") {
-			if (!assignedTo) {
-				return res.status(400).json({
-					success: false,
-					msg: "Admin must specify assignedTo (CSR ID)",
-				});
-			}
-			assignedTo = new mongoose.Types.ObjectId(assignedTo);
-		} else {
-			assignedTo = new mongoose.Types.ObjectId(req.user.userId);
-		}
-
-		const lead = await Lead.create({ ...rest, assignedTo });
-
-		res.status(201).json({
-			success: true,
-			msg: "Lead created successfully",
-			data: lead,
-		});
-	} catch (error) {
-		res.status(400).json({
-			success: false,
-			msg: "Error occurred in creating lead",
-			error: error.message,
-		});
+	if (req.user.role === "admin") {
+		if (!assignedTo) throw new BadRequestError("Admin must specify assignedTo (CSR ID)");
+		assignedTo = new mongoose.Types.ObjectId(assignedTo);
+	} else {
+		assignedTo = new mongoose.Types.ObjectId(req.user.userId);
 	}
-};
+
+	const lead = await Lead.create({ ...rest, assignedTo });
+	res.status(201).json({ success: true, msg: "Lead created successfully", data: lead });
+});
 
 // ===============================
 // Get leads assigned to logged-in CSR
 // ===============================
-const getLeads = async (req, res) => {
-	try {
-		const leads = await Lead.find({ assignedTo: req.user.userId });
-		res.status(200).json({ success: true, data: leads });
-	} catch (error) {
-		res.status(400).json({ success: false, error: error.message });
-	}
-};
+const getLeads = asyncWrapper(async (req, res) => {
+	const leads = await Lead.find({ assignedTo: req.user.userId });
+	res.status(200).json({ success: true, data: leads });
+});
 
 // ===============================
 // Get leads filtered by date
 // ===============================
-const getLeadsByDate = async (req, res) => {
+const getLeadsByDate = asyncWrapper(async (req, res) => {
 	const { filter } = req.query;
 	const now = new Date();
 	let startDate;
@@ -92,137 +65,111 @@ const getLeadsByDate = async (req, res) => {
 			startDate = new Date(now.getFullYear(), now.getMonth(), 1);
 			break;
 		default:
-			return res.status(400).json({ success: false, msg: "Invalid filter" });
+			throw new BadRequestError("Invalid filter");
 	}
 
-	try {
-		const leads = await Lead.find({
-			assignedTo: req.user.userId,
-			createdAt: { $gte: startDate },
-		});
-		res.status(200).json({ success: true, data: leads });
-	} catch (error) {
-		res.status(400).json({ success: false, error: error.message });
-	}
-};
+	const leads = await Lead.find({
+		assignedTo: req.user.userId,
+		createdAt: { $gte: startDate },
+	});
+	res.status(200).json({ success: true, data: leads });
+});
 
 // ===============================
 // Get single lead
 // ===============================
-const getSingleLead = async (req, res) => {
-	try {
-		const lead = await Lead.findById(req.params.id);
-		if (!lead) return res.status(404).json({ success: false, msg: "Lead not found" });
+const getSingleLead = asyncWrapper(async (req, res) => {
+	const lead = await Lead.findById(req.params.id);
+	if (!lead) throw new NotFoundError("Lead not found");
 
-		if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
-			return res.status(403).json({ success: false, msg: "Access denied" });
-		}
-
-		res.status(200).json({ success: true, data: lead });
-	} catch (error) {
-		res.status(400).json({ success: false, error: error.message });
+	if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
+		throw new BadRequestError("Access denied");
 	}
-};
+
+	res.status(200).json({ success: true, data: lead });
+});
 
 // ===============================
 // Update lead
 // ===============================
-const updateLead = async (req, res) => {
-	try {
-		const lead = await Lead.findById(req.params.id);
-		if (!lead) return res.status(404).json({ success: false, msg: "Lead not found" });
+const updateLead = asyncWrapper(async (req, res) => {
+	const lead = await Lead.findById(req.params.id);
+	if (!lead) throw new NotFoundError("Lead not found");
 
-		if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
-			return res.status(403).json({ success: false, msg: "Unauthorized" });
-		}
-
-		const updatedLead = await Lead.findByIdAndUpdate(
-			req.params.id,
-			req.body,
-			{ new: true, runValidators: true }
-		);
-
-		res.status(200).json({ success: true, data: updatedLead });
-	} catch (error) {
-		res.status(400).json({ success: false, error: error.message });
+	if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
+		throw new BadRequestError("Unauthorized");
 	}
-};
+
+	const updatedLead = await Lead.findByIdAndUpdate(req.params.id, req.body, {
+		new: true,
+		runValidators: true,
+	});
+	res.status(200).json({ success: true, data: updatedLead });
+});
 
 // ===============================
 // Delete lead
 // ===============================
-const deleteLead = async (req, res) => {
-	try {
-		const lead = await Lead.findById(req.params.id);
-		if (!lead) return res.status(404).json({ success: false, msg: "Lead not found" });
+const deleteLead = asyncWrapper(async (req, res) => {
+	const lead = await Lead.findById(req.params.id);
+	if (!lead) throw new NotFoundError("Lead not found");
 
-		if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
-			return res.status(403).json({ success: false, msg: "Unauthorized" });
-		}
-
-		await lead.deleteOne();
-		res.status(200).json({ success: true, msg: "Lead deleted" });
-	} catch (error) {
-		res.status(400).json({ success: false, error: error.message });
+	if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
+		throw new BadRequestError("Unauthorized");
 	}
-};
+
+	await lead.deleteOne();
+	res.status(200).json({ success: true, msg: "Lead deleted" });
+});
 
 // ===============================
 // Convert lead to sale (TASK-19)
 // ===============================
-const convertLeadToSale = async (req, res) => {
+const convertLeadToSale = asyncWrapper(async (req, res) => {
 	const { amount } = req.body;
-	if (!amount) return res.status(400).json({ success: false, msg: "Amount required" });
+	if (!amount) throw new BadRequestError("Amount required");
 
-	try {
-		const lead = await Lead.findById(req.params.id);
-		if (!lead) return res.status(404).json({ success: false, msg: "Lead not found" });
+	const lead = await Lead.findById(req.params.id);
+	if (!lead) throw new NotFoundError("Lead not found");
 
-		const sale = await Sale.create({
-			lead: lead._id,
-			csr: lead.assignedTo,
-			amount,
-			status: "completed",
-		});
+	const sale = await Sale.create({
+		lead: lead._id,
+		csr: lead.assignedTo,
+		amount,
+		status: "completed",
+	});
 
-		lead.status = "converted";
-		await lead.save();
+	lead.status = "converted";
+	await lead.save();
 
-		res.status(201).json({ success: true, data: sale });
-	} catch (error) {
-		res.status(400).json({ success: false, error: error.message });
-	}
-};
+	res.status(201).json({ success: true, data: sale });
+});
 
 // ===============================
 // TASK-24: Upload leads via Excel
 // ===============================
-const uploadLeads = async (req, res) => {
-	try {
-		const workbook = xlsx.readFile(req.file.path);
-		const sheet = workbook.Sheets[workbook.SheetNames[0]];
-		const data = xlsx.utils.sheet_to_json(sheet);
+const uploadLeads = asyncWrapper(async (req, res) => {
+	const workbook = xlsx.readFile(req.file.path);
+	const sheet = workbook.Sheets[workbook.SheetNames[0]];
+	const data = xlsx.utils.sheet_to_json(sheet);
 
-		const leads = data.map(row => ({
-			name: row.name,
-			phone: row.phone,
-			course: row.course,
-			source: row.source,
-			status: "new",
-			assignedTo: new mongoose.Types.ObjectId(req.body.assignedTo),
-		}));
+	const leads = data.map((row) => ({
+		name: row.name,
+		phone: row.phone,
+		course: row.course,
+		source: row.source,
+		status: "new",
+		assignedTo: new mongoose.Types.ObjectId(req.body.assignedTo),
+	}));
 
-		const inserted = await Lead.insertMany(leads);
-		res.status(201).json({ success: true, count: inserted.length });
-	} catch (error) {
-		res.status(400).json({ success: false, error: error.message });
-	}
-};
+	const inserted = await Lead.insertMany(leads);
+	res.status(201).json({ success: true, count: inserted.length });
+});
 
 // ===============================
 // TASK-27: Validate Excel Data
 // ===============================
-const validateExcelData = async (req, res) => {
+const validateExcelData = asyncWrapper(async (req, res) => {
 	const workbook = xlsx.readFile(req.file.path);
 	const sheet = workbook.Sheets[workbook.SheetNames[0]];
 	const data = xlsx.utils.sheet_to_json(sheet);
@@ -245,12 +192,12 @@ const validateExcelData = async (req, res) => {
 		validRows,
 		invalidRows,
 	});
-};
+});
 
 // ===============================
 // TASK-28: Bulk Insert with Error Handling
 // ===============================
-const bulkInsertLeads = async (req, res) => {
+const bulkInsertLeads = asyncWrapper(async (req, res) => {
 	const workbook = xlsx.readFile(req.file.path);
 	const sheet = workbook.Sheets[workbook.SheetNames[0]];
 	const data = xlsx.utils.sheet_to_json(sheet);
@@ -290,7 +237,7 @@ const bulkInsertLeads = async (req, res) => {
 		skippedCount: invalidRows.length,
 		skippedRows: invalidRows,
 	});
-};
+});
 
 module.exports = {
 	createLead,
@@ -303,6 +250,6 @@ module.exports = {
 	getAllLeads,
 	getLeadsByCSR,
 	uploadLeads,        // Task 24
-	bulkInsertLeads,    // Task 26 + 28 (ONLY ONE)
+	bulkInsertLeads,    // Task 26 + 28
 	validateExcelData,  // Task 27
 };
