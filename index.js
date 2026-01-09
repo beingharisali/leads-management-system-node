@@ -24,6 +24,7 @@ const reportRoutes = require("./routes/reportRoutes");
 const notFoundMiddleware = require("./middleware/not-found");
 const errorHandlerMiddleware = require("./middleware/error-handler");
 const standardResponse = require("./middleware/standardResponse");
+const requestLogger = require("./middleware/requestLogger");
 
 
 // app.set('trust proxy', 1);
@@ -34,6 +35,7 @@ app.use(
 );
 
 // app.use(express.static(path.resolve(__dirname, "./client/build")));
+app.use(requestLogger);
 app.use(express.json());
 app.use(helmet());
 app.use(xss());
