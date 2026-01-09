@@ -25,12 +25,45 @@ const {
 const { auth, authorizeRoles } = require("../middleware/authentication"); // ✅ destructured import
 const upload = require("../middleware/upload");
 
+// ================= Validators (Task 35) =================
+const {
+	createLeadValidator,
+	updateLeadValidator,
+	getLeadsByDateValidator,
+} = require("../middleware/leadValidator");
+const validateRequest = require("../middleware/validateRequest");
+
 // ================= CSR Routes =================
 router.get("/get-leads", auth, getLeads);
-router.get("/get-leads-by-date", auth, getLeadsByDate);
-router.post("/create-leads", auth, authorizeRoles("csr", "admin"), createLead); // ✅ csr + admin can create
+
+router.get(
+	"/get-leads-by-date",
+	auth,
+	getLeadsByDateValidator,
+	validateRequest,
+	getLeadsByDate
+);
+
+router.post(
+	"/create-leads",
+	auth,
+	authorizeRoles("csr", "admin"),
+	createLeadValidator,
+	validateRequest,
+	createLead
+);
+
 router.get("/get-single-leads/:id", auth, getSingleLead);
-router.patch("/update-leads/:id", auth, authorizeRoles("csr", "admin"), updateLead);
+
+router.patch(
+	"/update-leads/:id",
+	auth,
+	authorizeRoles("csr", "admin"),
+	updateLeadValidator,
+	validateRequest,
+	updateLead
+);
+
 router.delete("/delete-leads/:id", auth, authorizeRoles("csr", "admin"), deleteLead);
 
 // ================= Admin Routes =================
