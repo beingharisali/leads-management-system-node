@@ -1,10 +1,10 @@
 const User = require('../models/User');
 const { StatusCodes } = require('http-status-codes');
-const { BadRequestError, UnauthenticatedError } = require('../errors');
+const asyncWrapper = require('../middleware/async'); // centralized error handling
+const { BadRequestError, UnauthenticatedError, NotFoundError } = require('../errors');
 
-// Register new user (CSR or Admin)
-const register = async (req, res) => {
-  // Role from request body OR default "csr"
+// ================= Register new user =================
+const register = asyncWrapper(async (req, res) => {
   const role = req.body.role || "csr"; // default CSR
   const user = await User.create({
     name: req.body.name,
@@ -12,7 +12,7 @@ const register = async (req, res) => {
     password: req.body.password,
     lastName: req.body.lastName,
     location: req.body.location,
-    role // use the variable, no hardcoded "admin"
+    role
   });
 
   const token = user.createJWT();
@@ -22,14 +22,14 @@ const register = async (req, res) => {
       lastName: user.lastName,
       location: user.location,
       name: user.name,
-      role: user.role, // role response me correct aayega
+      role: user.role,
       token,
     },
   });
-};
+});
 
-// Login existing user
-const login = async (req, res) => {
+// ================= Login existing user =================
+const login = asyncWrapper(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     throw new BadRequestError('Please provide email and password');
@@ -56,16 +56,18 @@ const login = async (req, res) => {
       token,
     },
   });
-};
+});
 
-// Update existing user
-const updateUser = async (req, res) => {
+// ================= Update existing user =================
+const updateUser = asyncWrapper(async (req, res) => {
   const { email, name, lastName, location } = req.body;
   if (!email || !name || !lastName || !location) {
     throw new BadRequestError('Please provide all values');
   }
 
   const user = await User.findOne({ _id: req.user.userId });
+  if (!user) throw new NotFoundError('User not found');
+
   user.email = email;
   user.name = name;
   user.lastName = lastName;
@@ -84,6 +86,6 @@ const updateUser = async (req, res) => {
       token,
     },
   });
-};
+});
 
 module.exports = { register, login, updateUser };
