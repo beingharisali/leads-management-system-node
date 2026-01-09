@@ -1,11 +1,10 @@
 // middleware/role.js
-
-const { UnauthorizedError } = require("../errors");
+const { UnauthenticatedError } = require("../errors");
 
 const role = (...allowedRoles) => {
     return (req, res, next) => {
         if (!req.user || !allowedRoles.includes(req.user.role)) {
-            throw new UnauthorizedError("Access denied");
+            throw new UnauthenticatedError("Access denied");
         }
         next();
     };

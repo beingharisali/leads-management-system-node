@@ -78,7 +78,11 @@ const getLeadsByDate = asyncWrapper(async (req, res) => {
 			startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 			break;
 		case "week":
-			startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+			// ISO week start (Monday)
+			const firstDayOfWeek = new Date(now);
+			const day = now.getDay() === 0 ? 7 : now.getDay(); // Sunday = 7
+			firstDayOfWeek.setDate(now.getDate() - day + 1);
+			startDate = new Date(firstDayOfWeek.getFullYear(), firstDayOfWeek.getMonth(), firstDayOfWeek.getDate());
 			break;
 		case "month":
 			startDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -91,6 +95,7 @@ const getLeadsByDate = asyncWrapper(async (req, res) => {
 		assignedTo: req.user.userId,
 		createdAt: { $gte: startDate },
 	});
+
 	res.status(200).json({
 		success: true,
 		message: "Leads fetched successfully by date filter",
