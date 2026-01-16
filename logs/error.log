@@ -1,0 +1,2 @@
+2026-01-16 16:49:59 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-16 16:54:59 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login

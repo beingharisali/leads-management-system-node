@@ -1,24 +1,38 @@
 const express = require('express');
 const router = express.Router();
-const { auth } = require('../middleware/authentication'); // updated middleware
 const { register, login, updateUser } = require('../controllers/auth');
-const rateLimiter = require('express-rate-limit');
+const { auth } = require('../middleware/authentication'); // authentication middleware
 
-const apiLimiter = rateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 10,
-  message: {
-    msg: 'Too many requests from this IP, please try again after 15 minutes',
-  },
+// ================= REGISTER – Only Admin can create users =================
+router.post('/register', auth, async (req, res, next) => {
+  try {
+    // Check if logged-in user is admin
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Only admin can create users' });
+    }
+    // Call controller
+    await register(req, res);
+  } catch (error) {
+    next(error); // centralized error handler
+  }
 });
 
-// Register new admin user (server-side role set in controller)
-router.post('/register', apiLimiter, register);
+// ================= LOGIN =================
+router.post('/login', async (req, res, next) => {
+  try {
+    await login(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
 
-// Login existing user
-router.post('/login', apiLimiter, login);
-
-// Update logged-in user profile
-router.patch('/updateUser', auth, updateUser);
+// ================= UPDATE PROFILE – Logged-in user =================
+router.put('/updateUser', auth, async (req, res, next) => {
+  try {
+    await updateUser(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;
