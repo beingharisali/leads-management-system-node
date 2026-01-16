@@ -41,7 +41,7 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
 });
 
 // =======================
-// Task-20: Get sales by CSR
+// Task-20: Get sales by CSR (with pagination)
 // =======================
 const getSalesByCSR = asyncWrapper(async (req, res) => {
     const { csrId } = req.params;
@@ -50,16 +50,35 @@ const getSalesByCSR = asyncWrapper(async (req, res) => {
         throw new UnauthenticatedError("Access denied");
     }
 
-    const sales = await Sale.find({ csr: csrId }).populate("lead", "name email");
-    res.status(200).json({ success: true, data: sales });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const filter = { csr: csrId };
+    const totalSales = await Sale.countDocuments(filter);
+
+    const sales = await Sale.find(filter)
+        .populate("lead", "name email")
+        .skip(skip)
+        .limit(limit);
+
+    res.status(200).json({
+        success: true,
+        data: sales,
+        page,
+        totalPages: Math.ceil(totalSales / limit),
+        totalSales,
+    });
 });
 
 // =======================
-// Task-21: Get sales by date filter
+// Task-21: Get sales by date filter (with pagination)
 // =======================
 const getSalesByDate = asyncWrapper(async (req, res) => {
-    const { start, end } = req.query;
+    const { start, end, page = 1, limit = 10 } = req.query;
     if (!start || !end) throw new BadRequestError("Start and end dates are required");
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const filter = {
         createdAt: { $gte: new Date(start), $lte: new Date(end) },
@@ -69,36 +88,76 @@ const getSalesByDate = asyncWrapper(async (req, res) => {
         filter.csr = req.user.userId;
     }
 
-    const sales = await Sale.find(filter).populate("lead", "name email");
-    res.status(200).json({ success: true, data: sales });
+    const totalSales = await Sale.countDocuments(filter);
+
+    const sales = await Sale.find(filter)
+        .populate("lead", "name email")
+        .skip(skip)
+        .limit(parseInt(limit));
+
+    res.status(200).json({
+        success: true,
+        data: sales,
+        page: parseInt(page),
+        totalPages: Math.ceil(totalSales / parseInt(limit)),
+        totalSales,
+    });
 });
 
 // =======================
-// Task-22: Admin - Get all sales
+// Task-22: Admin - Get all sales (with pagination)
 // =======================
 const getAllSales = asyncWrapper(async (req, res) => {
     if (req.user.role !== "admin") throw new UnauthenticatedError("Admin only");
 
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalSales = await Sale.countDocuments();
+
     const sales = await Sale.find()
         .populate("lead", "name email")
-        .populate("csr", "name email");
+        .populate("csr", "name email")
+        .skip(skip)
+        .limit(limit);
 
-    res.status(200).json({ success: true, total: sales.length, data: sales });
+    res.status(200).json({
+        success: true,
+        totalSales,
+        page,
+        totalPages: Math.ceil(totalSales / limit),
+        data: sales,
+    });
 });
 
 // =======================
-// Task-23: Admin - Get sales by CSR
+// Task-23: Admin - Get sales by CSR (with pagination)
 // =======================
 const adminGetSalesByCSR = asyncWrapper(async (req, res) => {
     if (req.user.role !== "admin") throw new UnauthenticatedError("Admin only");
 
     const { csrId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    const sales = await Sale.find({ csr: csrId })
+    const filter = { csr: csrId };
+    const totalSales = await Sale.countDocuments(filter);
+
+    const sales = await Sale.find(filter)
         .populate("lead", "name email")
-        .populate("csr", "name email");
+        .populate("csr", "name email")
+        .skip(skip)
+        .limit(limit);
 
-    res.status(200).json({ success: true, total: sales.length, data: sales });
+    res.status(200).json({
+        success: true,
+        totalSales,
+        page,
+        totalPages: Math.ceil(totalSales / limit),
+        data: sales,
+    });
 });
 
 module.exports = {

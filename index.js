@@ -18,6 +18,9 @@ const leadRoutes = require("./routes/leads");
 const saleRoutes = require("./routes/saleRoutes"); // ✅ Task-20 added
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const setupAdminRouter = require('./routes/setupAdmin');
+app.use('/api/v1/setup', setupAdminRouter);
+
 
 
 // error handler
