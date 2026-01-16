@@ -33,7 +33,7 @@ const requestLogger = require("./middleware/requestLogger");
 // app.set('trust proxy', 1);
 app.use(
 	cors({
-		origin: "http://localhost:3000", // Allow requests from the frontend
+		origin: "http://localhost:30001", // Allow requests from the frontend
 	})
 );
 
