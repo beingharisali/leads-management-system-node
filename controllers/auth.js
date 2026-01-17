@@ -2,80 +2,151 @@ const User = require('../models/User');
 const { StatusCodes } = require('http-status-codes');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const asyncWrapper = require('../middleware/async');
 const { BadRequestError, UnauthenticatedError } = require('../errors');
 
-// Generate JWT
+// ===== JWT HELPER =====
 const createJWT = (user) => {
   return jwt.sign(
-    { userId: user._id, role: user.role },
+    {
+      userId: user._id,
+      role: user.role,
+      name: user.name,
+      email: user.email,
+    },
     process.env.JWT_SECRET,
-    { expiresIn: '1d' }
+    { expiresIn: process.env.JWT_LIFETIME || '1d' }
   );
 };
 
-// REGISTER – Only Admin can create new users (CSR/Admin)
-const register = async (req, res) => {
-  const { name, email, password, role = 'csr' } = req.body;
+// ===== FIRST ADMIN SIGNUP =====
+const firstAdminSignup = asyncWrapper(async (req, res) => {
+  const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    return res.status(StatusCodes.BAD_REQUEST).json({ msg: 'Please provide all values' });
+    throw new BadRequestError('Please provide all values');
   }
 
-  const existingUser = await User.findOne({ email });
-  if (existingUser) {
-    return res.status(StatusCodes.BAD_REQUEST).json({ msg: 'Email already in use' });
+  const adminExists = await User.findOne({ role: 'admin' });
+  if (adminExists) {
+    throw new BadRequestError('Admin already exists. Please login.');
   }
 
-  const user = await User.create({ name, email, password, role });
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const user = await User.create({
+    name,
+    email: email.toLowerCase(),
+    password: hashedPassword,
+    role: 'admin',
+  });
+
   const token = createJWT(user);
 
   res.status(StatusCodes.CREATED).json({
-    user: { name: user.name, email: user.email, role: user.role },
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
     token,
   });
-};
+});
 
-// LOGIN
-const login = async (req, res) => {
+// ===== REGISTER (ADMIN ONLY) =====
+const register = asyncWrapper(async (req, res) => {
+  const { name, email, password, role = 'csr' } = req.body;
+
+  if (req.user.role !== 'admin') {
+    throw new UnauthenticatedError('Only admin can create users');
+  }
+
+  if (!name || !email || !password) {
+    throw new BadRequestError('Please provide all values');
+  }
+
+  const emailExists = await User.findOne({ email: email.toLowerCase() });
+  if (emailExists) {
+    throw new BadRequestError('Email already in use');
+  }
+
+  await User.create({
+    name,
+    email: email.toLowerCase(),
+    password: await bcrypt.hash(password, 10),
+    role: role.toLowerCase(),
+  });
+
+  res.status(StatusCodes.CREATED).json({
+    msg: 'User created successfully',
+  });
+});
+
+// ===== LOGIN =====
+const login = asyncWrapper(async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(StatusCodes.BAD_REQUEST).json({ msg: 'Please provide email and password' });
+    throw new BadRequestError('Please provide email and password');
   }
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    throw new UnauthenticatedError('Invalid Credentials');
-  }
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) throw new UnauthenticatedError('Invalid Credentials');
 
-  const isPasswordCorrect = await bcrypt.compare(password, user.password);
-  if (!isPasswordCorrect) {
-    throw new UnauthenticatedError('Invalid Credentials');
-  }
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) throw new UnauthenticatedError('Invalid Credentials');
 
   const token = createJWT(user);
 
   res.status(StatusCodes.OK).json({
-    user: { name: user.name, email: user.email, role: user.role },
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
     token,
   });
-};
+});
 
-// UPDATE PROFILE
-const updateUser = async (req, res) => {
-  const { name, email } = req.body;
+// ===== UPDATE PROFILE =====
+const updateUser = asyncWrapper(async (req, res) => {
+  const { name, email, password } = req.body;
+
   const user = await User.findById(req.user.userId);
+  if (!user) throw new UnauthenticatedError('User not found');
 
-  if (!user) {
-    throw new UnauthenticatedError('User not found');
+  if (email && email.toLowerCase() !== user.email) {
+    const emailExists = await User.findOne({ email: email.toLowerCase() });
+    if (emailExists) {
+      throw new BadRequestError('Email already in use');
+    }
+    user.email = email.toLowerCase();
   }
 
-  user.name = name || user.name;
-  user.email = email || user.email;
+  if (name) user.name = name;
+
+  if (password) {
+    user.password = await bcrypt.hash(password, 10);
+  }
 
   await user.save();
 
-  res.status(StatusCodes.OK).json({ user, msg: 'Profile updated successfully' });
-};
+  res.status(StatusCodes.OK).json({
+    msg: 'Profile updated successfully',
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
+  });
+});
 
-module.exports = { register, login, updateUser };
+module.exports = {
+  firstAdminSignup,
+  register,
+  login,
+  updateUser,
+};

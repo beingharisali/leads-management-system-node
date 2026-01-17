@@ -1,60 +1,63 @@
 require("dotenv").config();
 require("express-async-errors");
 
-const path = require("path");
-// extra security packages
-const helmet = require("helmet");
-const xss = require("xss-clean");
-
 const express = require("express");
 const app = express();
 const cors = require("cors");
+
+// security
+const helmet = require("helmet");
+const xss = require("xss-clean");
 
 const connectDB = require("./db/connect");
 
 // routers
 const authRouter = require("./routes/auth");
 const leadRoutes = require("./routes/leads");
-const saleRoutes = require("./routes/saleRoutes"); // ✅ Task-20 added
+const saleRoutes = require("./routes/saleRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
-const setupAdminRouter = require('./routes/setupAdmin');
-app.use('/api/v1/setup', setupAdminRouter);
+const setupAdminRouter = require("./routes/setupAdmin");
 
-
-
-// error handler
+// middlewares
 const notFoundMiddleware = require("./middleware/not-found");
 const errorHandlerMiddleware = require("./middleware/error-handler");
 const standardResponse = require("./middleware/standardResponse");
 const requestLogger = require("./middleware/requestLogger");
 
+/* =======================
+   🔥 VERY IMPORTANT PART
+======================= */
 
-// app.set('trust proxy', 1);
+// CORS MUST BE FIRST
 app.use(
 	cors({
-		origin: "http://localhost:3000", // Allow requests from the frontend
+		origin: "http://localhost:3000",
+		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+		credentials: true,
 	})
 );
 
-// app.use(express.static(path.resolve(__dirname, "./client/build")));
-app.use(requestLogger);
+// allow preflight requests
+app.options("*", cors());
+
+/* ======================= */
+
 app.use(express.json());
+app.use(requestLogger);
 app.use(helmet());
 app.use(xss());
 app.use(standardResponse);
 
-
 // routes
+app.use("/api/v1/setup", setupAdminRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/lead", leadRoutes);
-app.use("/api/v1/sale", saleRoutes); // ✅ Task-20 route mounted
+app.use("/api/v1/sale", saleRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/reports", reportRoutes);
 
-
-
-// error handling middlewares
+// errors
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
@@ -64,7 +67,7 @@ const start = async () => {
 	try {
 		await connectDB(process.env.MONGO_URI);
 		app.listen(port, () =>
-			console.log(`Server is listening on port ${port}...`)
+			console.log(`Server running on port ${port}`)
 		);
 	} catch (error) {
 		console.log(error);

@@ -1,53 +1,61 @@
 // middleware/authentication.js
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const { UnauthenticatedError } = require('../errors');
+const jwt = require("jsonwebtoken");
 
 /**
- * Auth Middleware
- * Checks if the request has a valid JWT token
- * and attaches user info (userId & role) to req.user
+ * ======================
+ * AUTHENTICATION
+ * ======================
+ * Sirf token verify kare
+ * aur userId + role req.user mein daal de
  */
 const auth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, msg: 'Authentication invalid' });
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      msg: "No token provided",
+    });
   }
 
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.split(" ")[1];
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(payload.userId).select('-password');
-    if (!user) {
-      return res.status(401).json({ success: false, msg: 'Authentication invalid' });
-    }
 
-    // attach user info to request
-    req.user = { userId: user._id, role: user.role };
+    // ⚠️ DB call ki zaroorat nahi
+    req.user = {
+      userId: payload.userId,
+      role: payload.role,
+    };
+
     next();
   } catch (error) {
-    console.error('Auth Middleware Error:', error);
-    return res.status(401).json({ success: false, msg: 'Authentication invalid' });
+    return res.status(401).json({
+      success: false,
+      msg: "Token invalid or expired",
+    });
   }
 };
 
 /**
- * Role-based Authorization Middleware
- * Accepts multiple roles
- * Example: authorizeRoles('admin', 'csr')
+ * ======================
+ * AUTHORIZATION (ROLES)
+ * ======================
  */
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ success: false, msg: 'Authentication required' });
+      return res.status(401).json({
+        success: false,
+        msg: "Authentication required",
+      });
     }
 
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        msg: `Access denied. Required role(s): ${roles.join(', ')}`,
+        msg: "Access denied",
       });
     }
 

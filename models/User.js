@@ -7,30 +7,30 @@ const UserSchema = new mongoose.Schema({
 		type: String,
 		required: [true, "Please provide name"],
 		maxlength: 50,
-		minlength: 3,
+		minlength: 3
 	},
 	email: {
 		type: String,
 		required: [true, "Please provide email"],
-		unique: true,
+		unique: true
 	},
 	password: {
 		type: String,
 		required: [true, "Please provide password"],
-		minlength: 6,
+		minlength: 6
 	},
 	lastName: {
 		type: String,
-		default: "lastName",	
+		default: "lastName"
 	},
 	location: {
 		type: String,
-		default: "my city",
+		default: "my city"
 	},
-	role: {              // <-- add this
+	role: {
 		type: String,
 		enum: ["csr", "admin"],
-		default: "csr",
+		default: "csr"
 	},
 });
 
@@ -41,15 +41,13 @@ UserSchema.pre("save", async function () {
 });
 
 UserSchema.methods.createJWT = function () {
-	return jwt.sign(
-		{ userId: this._id, name: this.name, role: this.role }, // <-- include role
-		process.env.JWT_SECRET,
-		{ expiresIn: process.env.JWT_LIFETIME }
-	);
+	return jwt.sign({ userId: this._id, name: this.name, role: this.role }, process.env.JWT_SECRET, {
+		expiresIn: process.env.JWT_LIFETIME || "1d",
+	});
 };
 
-UserSchema.methods.comparePassword = async function (canditatePassword) {
-	return await bcrypt.compare(canditatePassword, this.password);
+UserSchema.methods.comparePassword = async function (candidatePassword) {
+	return await bcrypt.compare(candidatePassword, this.password);
 };
 
 module.exports = mongoose.model("User", UserSchema);
