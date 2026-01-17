@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const xlsx = require("xlsx");
 const Lead = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
-const asyncWrapper = require("../middleware/async"); // Task 34
+const asyncWrapper = require("../middleware/async");
 const { BadRequestError, NotFoundError } = require("../errors");
 
 // ===============================
@@ -19,20 +19,28 @@ const getAllLeads = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Admin: Get leads by CSR
+// Get leads by CSR (Admin / CSR Dashboard)
 // ===============================
 const getLeadsByCSR = asyncWrapper(async (req, res) => {
-    const leads = await Lead.find({ assignedTo: req.params.csrId });
+    let csrId;
+
+    if (req.user.role === "csr") {
+        csrId = req.user.userId; // CSR dashboard
+    } else {
+        csrId = req.params.csrId; // Admin route
+    }
+
+    const leads = await Lead.find({ assignedTo: csrId });
     res.status(200).json({
         success: true,
-        message: "Leads for the specified CSR fetched successfully",
+        message: `Leads fetched successfully for ${req.user.role === "csr" ? "logged-in CSR" : "specified CSR"}`,
         data: leads,
         count: leads.length,
     });
 });
 
 // ===============================
-// TASK-06: Create a new lead
+// Create a new lead
 // ===============================
 const createLead = asyncWrapper(async (req, res) => {
     let { assignedTo, ...rest } = req.body;
@@ -78,9 +86,8 @@ const getLeadsByDate = asyncWrapper(async (req, res) => {
             startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             break;
         case "week":
-            // ISO week start (Monday)
             const firstDayOfWeek = new Date(now);
-            const day = now.getDay() === 0 ? 7 : now.getDay(); // Sunday = 7
+            const day = now.getDay() === 0 ? 7 : now.getDay();
             firstDayOfWeek.setDate(now.getDate() - day + 1);
             startDate = new Date(firstDayOfWeek.getFullYear(), firstDayOfWeek.getMonth(), firstDayOfWeek.getDate());
             break;
@@ -137,6 +144,7 @@ const updateLead = asyncWrapper(async (req, res) => {
         new: true,
         runValidators: true,
     });
+
     res.status(200).json({
         success: true,
         message: "Lead updated successfully",
@@ -163,7 +171,7 @@ const deleteLead = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Convert lead to sale (TASK-19)
+// Convert lead to sale
 // ===============================
 const convertLeadToSale = asyncWrapper(async (req, res) => {
     const { amount } = req.body;
@@ -190,7 +198,7 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// TASK-24: Upload leads via Excel
+// Upload leads via Excel
 // ===============================
 const uploadLeads = asyncWrapper(async (req, res) => {
     const workbook = xlsx.readFile(req.file.path);
@@ -215,7 +223,7 @@ const uploadLeads = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// TASK-27: Validate Excel Data
+// Validate Excel data
 // ===============================
 const validateExcelData = asyncWrapper(async (req, res) => {
     const workbook = xlsx.readFile(req.file.path);
@@ -244,7 +252,7 @@ const validateExcelData = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// TASK-28: Bulk Insert with Error Handling
+// Bulk Insert with Error Handling
 // ===============================
 const bulkInsertLeads = asyncWrapper(async (req, res) => {
     const workbook = xlsx.readFile(req.file.path);
@@ -299,7 +307,7 @@ module.exports = {
     convertLeadToSale,
     getAllLeads,
     getLeadsByCSR,
-    uploadLeads,        // Task 24
-    bulkInsertLeads,    // Task 26 + 28
-    validateExcelData,  // Task 27
+    uploadLeads,
+    bulkInsertLeads,
+    validateExcelData,
 };
