@@ -1,11 +1,11 @@
-const User = require('../models/User');
-const { StatusCodes } = require('http-status-codes');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const asyncWrapper = require('../middleware/async');
-const { BadRequestError, UnauthenticatedError } = require('../errors');
+const User = require("../models/User");
+const { StatusCodes } = require("http-status-codes");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const asyncWrapper = require("../middleware/async");
+const { BadRequestError, UnauthenticatedError } = require("../errors");
 
-// ===== JWT HELPER =====
+// ================= JWT HELPER =================
 const createJWT = (user) => {
   return jwt.sign(
     {
@@ -15,21 +15,23 @@ const createJWT = (user) => {
       email: user.email,
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_LIFETIME || '1d' }
+    {
+      expiresIn: process.env.JWT_LIFETIME || "1d",
+    }
   );
 };
 
-// ===== FIRST ADMIN SIGNUP =====
+// ================= FIRST ADMIN SIGNUP =================
 const firstAdminSignup = asyncWrapper(async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    throw new BadRequestError('Please provide all values');
+    throw new BadRequestError("Please provide all values");
   }
 
-  const adminExists = await User.findOne({ role: 'admin' });
+  const adminExists = await User.findOne({ role: "admin" });
   if (adminExists) {
-    throw new BadRequestError('Admin already exists. Please login.');
+    throw new BadRequestError("Admin already exists. Please login.");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -38,37 +40,38 @@ const firstAdminSignup = asyncWrapper(async (req, res) => {
     name,
     email: email.toLowerCase(),
     password: hashedPassword,
-    role: 'admin',
+    role: "admin",
   });
 
   const token = createJWT(user);
 
   res.status(StatusCodes.CREATED).json({
+    success: true,
+    token,
     user: {
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
     },
-    token,
   });
 });
 
-// ===== REGISTER (ADMIN ONLY) =====
+// ================= REGISTER (ADMIN ONLY) =================
 const register = asyncWrapper(async (req, res) => {
-  const { name, email, password, role = 'csr' } = req.body;
-
-  if (req.user.role !== 'admin') {
-    throw new UnauthenticatedError('Only admin can create users');
+  if (req.user.role !== "admin") {
+    throw new UnauthenticatedError("Only admin can create users");
   }
 
+  const { name, email, password, role = "csr" } = req.body;
+
   if (!name || !email || !password) {
-    throw new BadRequestError('Please provide all values');
+    throw new BadRequestError("Please provide all values");
   }
 
   const emailExists = await User.findOne({ email: email.toLowerCase() });
   if (emailExists) {
-    throw new BadRequestError('Email already in use');
+    throw new BadRequestError("Email already in use");
   }
 
   await User.create({
@@ -79,48 +82,57 @@ const register = asyncWrapper(async (req, res) => {
   });
 
   res.status(StatusCodes.CREATED).json({
-    msg: 'User created successfully',
+    success: true,
+    msg: "User created successfully",
   });
 });
 
-// ===== LOGIN =====
+// ================= LOGIN =================
 const login = asyncWrapper(async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    throw new BadRequestError('Please provide email and password');
+    throw new BadRequestError("Please provide email and password");
   }
 
+  // 👇 SAFE LOGIN (password explicitly selected)
   const user = await User.findOne({ email: email.toLowerCase() });
-  if (!user) throw new UnauthenticatedError('Invalid Credentials');
+  if (!user) {
+    throw new UnauthenticatedError("Invalid Credentials");
+  }
 
   const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) throw new UnauthenticatedError('Invalid Credentials');
+  if (!isMatch) {
+    throw new UnauthenticatedError("Invalid Credentials");
+  }
 
   const token = createJWT(user);
 
   res.status(StatusCodes.OK).json({
+    success: true,
+    token,
     user: {
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
     },
-    token,
   });
 });
 
-// ===== UPDATE PROFILE =====
+// ================= UPDATE PROFILE =================
 const updateUser = asyncWrapper(async (req, res) => {
   const { name, email, password } = req.body;
 
   const user = await User.findById(req.user.userId);
-  if (!user) throw new UnauthenticatedError('User not found');
+  if (!user) {
+    throw new UnauthenticatedError("User not found");
+  }
 
   if (email && email.toLowerCase() !== user.email) {
     const emailExists = await User.findOne({ email: email.toLowerCase() });
     if (emailExists) {
-      throw new BadRequestError('Email already in use');
+      throw new BadRequestError("Email already in use");
     }
     user.email = email.toLowerCase();
   }
@@ -134,7 +146,8 @@ const updateUser = asyncWrapper(async (req, res) => {
   await user.save();
 
   res.status(StatusCodes.OK).json({
-    msg: 'Profile updated successfully',
+    success: true,
+    msg: "Profile updated successfully",
     user: {
       _id: user._id,
       name: user.name,
