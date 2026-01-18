@@ -10,7 +10,6 @@ exports.getCsrDashboardStats = async (req, res) => {
 
         const totalLeads = await Lead.countDocuments({ assignedTo: csrId });
         const totalSales = await Sale.countDocuments({ csr: csrId });
-
         const conversionRate =
             totalLeads === 0 ? "0%" : `${((totalSales / totalLeads) * 100).toFixed(2)}%`;
 
@@ -54,7 +53,7 @@ exports.getCsrDashboardStats = async (req, res) => {
             salesStats,
         });
     } catch (error) {
-        console.error(error);
+        console.error("CSR Dashboard Error:", error);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
             success: false,
             msg: error.message,
@@ -68,7 +67,6 @@ exports.getAdminDashboardStats = async (req, res) => {
         const totalLeads = await Lead.countDocuments();
         const totalSales = await Sale.countDocuments();
         const totalCSRs = await User.countDocuments({ role: "csr" });
-
         const conversionRate =
             totalLeads === 0 ? "0%" : `${((totalSales / totalLeads) * 100).toFixed(2)}%`;
 
@@ -85,6 +83,23 @@ exports.getAdminDashboardStats = async (req, res) => {
             month: await Sale.countDocuments({ createdAt: { $gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) } }),
         };
 
+        // CSR performance data for Admin Dashboard Table
+        const csrs = await User.find({ role: "csr" }).sort({ name: 1 });
+        const csrPerformance = await Promise.all(
+            csrs.map(async (csr) => {
+                const totalLeads = await Lead.countDocuments({ assignedTo: csr._id });
+                const totalSales = await Sale.countDocuments({ csr: csr._id });
+                const conversionRate = totalLeads === 0 ? "0%" : `${((totalSales / totalLeads) * 100).toFixed(2)}%`;
+                return {
+                    csrId: csr._id,
+                    name: csr.name,
+                    totalLeads,
+                    totalSales,
+                    conversionRate,
+                };
+            })
+        );
+
         res.status(StatusCodes.OK).json({
             success: true,
             totalLeads,
@@ -93,9 +108,10 @@ exports.getAdminDashboardStats = async (req, res) => {
             conversionRate,
             leadsStats,
             salesStats,
+            csrPerformance,
         });
     } catch (error) {
-        console.error(error);
+        console.error("Admin Dashboard Error:", error);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
             success: false,
             msg: error.message,
@@ -106,13 +122,12 @@ exports.getAdminDashboardStats = async (req, res) => {
 // ================= Admin: CSR Performance Comparison =================
 exports.getCsrPerformanceComparison = async (req, res) => {
     try {
-        const csrs = await User.find({ role: "csr" }).sort({ name: 1 }); // 🔹 sorted by name
+        const csrs = await User.find({ role: "csr" }).sort({ name: 1 });
         const performanceData = await Promise.all(
             csrs.map(async (csr) => {
                 const totalLeads = await Lead.countDocuments({ assignedTo: csr._id });
                 const totalSales = await Sale.countDocuments({ csr: csr._id });
-                const conversionRate =
-                    totalLeads === 0 ? "0%" : `${((totalSales / totalLeads) * 100).toFixed(2)}%`;
+                const conversionRate = totalLeads === 0 ? "0%" : `${((totalSales / totalLeads) * 100).toFixed(2)}%`;
 
                 return {
                     csrId: csr._id,
@@ -130,7 +145,7 @@ exports.getCsrPerformanceComparison = async (req, res) => {
             data: performanceData,
         });
     } catch (error) {
-        console.error(error);
+        console.error("CSR Performance Comparison Error:", error);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
             success: false,
             msg: error.message,

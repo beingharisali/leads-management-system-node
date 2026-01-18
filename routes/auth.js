@@ -1,27 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const { firstAdminSignup, register, login, updateUser } = require('../controllers/auth');
-const { auth } = require('../middleware/authentication'); // JWT verify middleware
+
+const {
+    firstAdminSignup,
+    register,
+    login,
+    updateUser,
+} = require('../controllers/auth');
+
+const { auth } = require('../middleware/authentication');
+const asyncWrapper = require('../middleware/async');
 
 // ===== FIRST ADMIN SIGNUP =====
-router.post('/first-admin-signup', firstAdminSignup);
+router.post('/first-admin-signup', asyncWrapper(firstAdminSignup));
 
-// ===== REGISTER – Only Admin =====
-router.post('/register', auth, async (req, res, next) => {
-    try {
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ msg: 'Only admin can create users' });
-        }
-        await register(req, res);
-    } catch (error) {
-        next(error);
-    }
-});
+// ===== REGISTER (ADMIN ONLY) =====
+router.post('/register', auth, asyncWrapper(register));
 
 // ===== LOGIN =====
-router.post('/login', login);
+router.post('/login', asyncWrapper(login));
 
 // ===== UPDATE PROFILE =====
-router.put('/updateUser', auth, updateUser);
+router.put('/updateUser', auth, asyncWrapper(updateUser));
 
 module.exports = router;

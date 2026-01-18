@@ -5,8 +5,8 @@ const jwt = require("jsonwebtoken");
  * ======================
  * AUTHENTICATION
  * ======================
- * Sirf token verify kare
- * aur userId + role req.user mein daal de
+ * JWT verify karta hai
+ * aur user info req.user mein attach karta hai
  */
 const auth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -14,7 +14,7 @@ const auth = async (req, res, next) => {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({
       success: false,
-      msg: "No token provided",
+      msg: "Authentication token missing",
     });
   }
 
@@ -23,17 +23,19 @@ const auth = async (req, res, next) => {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ⚠️ DB call ki zaroorat nahi
+    // ✅ JWT se user info attach
     req.user = {
       userId: payload.userId,
       role: payload.role,
+      name: payload.name,
+      email: payload.email,
     };
 
     next();
   } catch (error) {
     return res.status(401).json({
       success: false,
-      msg: "Token invalid or expired",
+      msg: "Authentication failed",
     });
   }
 };

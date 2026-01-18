@@ -20,9 +20,9 @@ const leadSchema = new mongoose.Schema(
 			type: String,
 		},
 		assignedTo: {
-			type: mongoose.Schema.Types.ObjectId, // ✅ ObjectId type
-			ref: "User",                          // ✅ Reference to User (CSR)
-			required: true
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "User", // CSR user
+			required: true, // ✅ ensure every lead has assigned CSR
 		},
 		status: {
 			type: String,
@@ -33,5 +33,5 @@ const leadSchema = new mongoose.Schema(
 	{ timestamps: true }
 );
 
-const leadsModel = mongoose.model("Leads", leadSchema);
-module.exports = leadsModel;
+const Leads = mongoose.model("Leads", leadSchema);
+module.exports = Leads;
