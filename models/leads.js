@@ -18,16 +18,26 @@ const leadSchema = new mongoose.Schema(
 		},
 		source: {
 			type: String,
+			default: "manual", // admin ya CSR source
 		},
 		assignedTo: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User", // CSR user
-			required: true, // ✅ ensure every lead has assigned CSR
+			required: false, // Admin can create unassigned lead
+		},
+		createdBy: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "User", // Jo lead create kiya (CSR ya Admin)
+			required: true,
 		},
 		status: {
 			type: String,
 			enum: ["new", "contacted", "converted"],
 			default: "new",
+		},
+		saleAmount: {
+			type: Number, // jab convert to sale ho
+			default: 0,
 		},
 	},
 	{ timestamps: true }

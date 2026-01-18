@@ -136,9 +136,48 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Excel / Bulk Upload Placeholders
+// Upload Excel Leads (CSR / Admin)
 // ===============================
-const uploadLeads = asyncWrapper(async (req, res) => { res.status(200).json({ msg: "Upload leads placeholder" }); });
+const uploadLeads = asyncWrapper(async (req, res) => {
+    if (!req.file) throw new BadRequestError("No file uploaded");
+
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = xlsx.utils.sheet_to_json(worksheet);
+
+    if (jsonData.length === 0) throw new BadRequestError("Excel file is empty");
+
+    // Validate required fields
+    const requiredFields = ["name", "phone", "course"];
+    const invalidRows = [];
+    jsonData.forEach((row, index) => {
+        requiredFields.forEach(field => {
+            if (!row[field]) invalidRows.push(`Row ${index + 1}: Missing ${field}`);
+        });
+    });
+    if (invalidRows.length > 0) throw new BadRequestError(`Validation errors: ${invalidRows.join(", ")}`);
+
+    // Assign to uploader's userId
+    const assignedTo = req.user.userId;
+
+    // Insert leads
+    const leads = jsonData.map(row => ({
+        name: row.name,
+        phone: row.phone,
+        course: row.course,
+        source: row.source || "Excel Upload",
+        assignedTo,
+    }));
+
+    await Lead.insertMany(leads);
+
+    res.status(200).json({
+        success: true,
+        message: `${leads.length} leads uploaded successfully`,
+        count: leads.length,
+    });
+});
 const bulkInsertLeads = asyncWrapper(async (req, res) => { res.status(200).json({ msg: "Bulk insert placeholder" }); });
 const parseExcelFile = asyncWrapper(async (req, res) => { res.status(200).json({ msg: "Parse excel placeholder" }); });
 const validateExcelData = asyncWrapper(async (req, res) => { res.status(200).json({ msg: "Validate excel placeholder" }); });
