@@ -137,3 +137,4 @@
 2026-01-19 06:04:37 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
 2026-01-19 06:30:55 [error] : CustomAPIError: Only admin can create users | POST /api/v1/auth/register
 2026-01-19 06:30:58 [error] : CustomAPIError: Only admin can create users | POST /api/v1/auth/register
+2026-01-19 18:34:26 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
