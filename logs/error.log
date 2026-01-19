@@ -20,3 +20,120 @@
 2026-01-18 16:54:09 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
 2026-01-18 16:54:10 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
 2026-01-18 16:54:11 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 01:26:29 [error] : Path `createdBy` is required. | POST /api/v1/lead/create-leads | Stack: ValidationError: Leads validation failed: createdBy: Path `createdBy` is required.
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 0)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-19 01:26:34 [error] : Path `createdBy` is required. | POST /api/v1/lead/create-leads | Stack: ValidationError: Leads validation failed: createdBy: Path `createdBy` is required.
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 0)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-19 01:29:32 [error] : Path `createdBy` is required. | POST /api/v1/lead/create-leads | Stack: ValidationError: Leads validation failed: createdBy: Path `createdBy` is required.
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 0)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-19 01:37:40 [error] : Path `createdBy` is required. | POST /api/v1/lead/create-leads | Stack: ValidationError: Leads validation failed: createdBy: Path `createdBy` is required.
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 0)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-19 01:45:37 [error] : Path `createdBy` is required., Path `phone` (`222222222`, length 9) is shorter than the minimum allowed length (11). | POST /api/v1/lead/create-leads | Stack: ValidationError: Leads validation failed: createdBy: Path `createdBy` is required., phone: Path `phone` (`222222222`, length 9) is shorter than the minimum allowed length (11).
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 0)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-19 01:54:24 [error] : Path `createdBy` is required. | POST /api/v1/lead/create-leads | Stack: ValidationError: Leads validation failed: createdBy: Path `createdBy` is required.
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 0)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-19 01:54:41 [error] : Path `createdBy` is required. | POST /api/v1/lead/create-leads | Stack: ValidationError: Leads validation failed: createdBy: Path `createdBy` is required.
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 0)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-19 02:23:53 [error] : Path `createdBy` is required. | POST /api/v1/lead/create-leads | Stack: ValidationError: Leads validation failed: createdBy: Path `createdBy` is required.
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 0)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-19 02:23:54 [error] : Path `createdBy` is required. | POST /api/v1/lead/create-leads | Stack: ValidationError: Leads validation failed: createdBy: Path `createdBy` is required.
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 0)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-19 05:02:52 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 05:03:17 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 05:03:17 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:00:01 [error] : CustomAPIError: Only admin can create users | POST /api/v1/auth/register
+2026-01-19 06:01:20 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:01:22 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:01:22 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:01:43 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:01:43 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:03:06 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:03:07 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:03:07 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:03:08 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:03:08 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:03:09 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:04:37 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-19 06:30:55 [error] : CustomAPIError: Only admin can create users | POST /api/v1/auth/register
+2026-01-19 06:30:58 [error] : CustomAPIError: Only admin can create users | POST /api/v1/auth/register

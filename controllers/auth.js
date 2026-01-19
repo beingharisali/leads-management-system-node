@@ -1,6 +1,5 @@
 const User = require("../models/User");
 const { StatusCodes } = require("http-status-codes");
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const asyncWrapper = require("../middleware/async");
 const { BadRequestError, UnauthenticatedError } = require("../errors");
@@ -34,12 +33,11 @@ const firstAdminSignup = asyncWrapper(async (req, res) => {
     throw new BadRequestError("Admin already exists. Please login.");
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
-
+  // ❌ NO HASHING HERE
   const user = await User.create({
     name,
     email: email.toLowerCase(),
-    password: hashedPassword,
+    password, // 👈 plain password
     role: "admin",
   });
 
@@ -74,10 +72,11 @@ const register = asyncWrapper(async (req, res) => {
     throw new BadRequestError("Email already in use");
   }
 
+  // ❌ NO HASHING HERE
   await User.create({
     name,
     email: email.toLowerCase(),
-    password: await bcrypt.hash(password, 10),
+    password, // 👈 plain password
     role: role.toLowerCase(),
   });
 
@@ -95,13 +94,13 @@ const login = asyncWrapper(async (req, res) => {
     throw new BadRequestError("Please provide email and password");
   }
 
-  // 👇 SAFE LOGIN (password explicitly selected)
   const user = await User.findOne({ email: email.toLowerCase() });
   if (!user) {
     throw new UnauthenticatedError("Invalid Credentials");
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  // ✅ model method (BEST PRACTICE)
+  const isMatch = await user.comparePassword(password);
   if (!isMatch) {
     throw new UnauthenticatedError("Invalid Credentials");
   }
@@ -140,7 +139,7 @@ const updateUser = asyncWrapper(async (req, res) => {
   if (name) user.name = name;
 
   if (password) {
-    user.password = await bcrypt.hash(password, 10);
+    user.password = password; // 👈 model khud hash karega
   }
 
   await user.save();
