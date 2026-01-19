@@ -563,3 +563,11 @@ GET /api/v1/dashboard/csr-stats?filter=day 200 155 - 24.693 ms
 POST /api/v1/lead/convert-to-sale/696d89acf1192ed222294739 201 264 - 67.312 ms
 GET /api/v1/lead/csr/696d897df1192ed222294714 200 441 - 15.426 ms
 GET /api/v1/dashboard/csr-stats?filter=day 200 157 - 36.718 ms
+POST /api/v1/auth/login 401 29 - 247.504 ms
+POST /api/v1/auth/login 200 401 - 211.245 ms
+GET /api/v1/lead/get-all-leads 200 2132 - 83.952 ms
+GET /api/v1/lead/get-all-leads 304 - - 28.826 ms
+GET /api/v1/dashboard/admin-stats?filter=day 200 406 - 181.962 ms
+GET /api/v1/dashboard/admin-stats?filter=day 304 - - 73.148 ms
+GET /api/v1/lead/get-all-leads 304 - - 38.237 ms
+GET /api/v1/dashboard/admin-stats?filter=day 304 - - 109.344 ms
