@@ -10,6 +10,7 @@ const {
 	updateLead,
 	deleteLead,
 	getAllLeads,
+	convertLeadToSale, // ✅ yaha add karo
 	getLeadsByCSR,
 	uploadLeads,       // Task 24
 	bulkInsertLeads,   // Task 26 + Task 28
@@ -44,6 +45,14 @@ router.post("/create-leads", auth, authorizeRoles("csr", "admin"), createLeadVal
 router.get("/get-single-leads/:id", auth, getSingleLead);
 router.patch("/update-leads/:id", auth, authorizeRoles("csr", "admin"), updateLeadValidator, validateRequest, updateLead);
 router.delete("/delete-leads/:id", auth, authorizeRoles("csr", "admin"), deleteLead);
+// Convert Lead to Sale
+// ===============================
+router.post(
+	"/convert-to-sale/:id",
+	auth,
+	authorizeRoles("csr", "admin"),
+	convertLeadToSale
+);
 
 // ================= Admin Routes =================
 router.get("/get-all-leads", auth, authorizeRoles("admin"), getAllLeads);
