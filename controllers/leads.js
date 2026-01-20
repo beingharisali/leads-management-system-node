@@ -6,26 +6,21 @@ const asyncWrapper = require("../middleware/async");
 const { BadRequestError, NotFoundError } = require("../errors");
 
 // ===============================
-// Admin: Get all leads
+// Get all leads (Admin Only)
 // ===============================
 const getAllLeads = asyncWrapper(async (req, res) => {
     const leads = await Lead.find({})
         .populate("assignedTo", "name email role")
         .sort({ createdAt: -1 });
 
-    res.status(200).json({
-        success: true,
-        data: leads,
-        count: leads.length,
-    });
+    res.status(200).json({ success: true, data: leads, count: leads.length });
 });
 
 // ===============================
-// Get leads by CSR
+// Get leads by CSR (Admin can view specific CSR leads)
 // ===============================
 const getLeadsByCSR = asyncWrapper(async (req, res) => {
-    const csrId =
-        req.user.role === "csr" ? req.user.userId : req.params.csrId;
+    const csrId = req.user.role === "csr" ? req.user.userId : req.params.csrId;
 
     if (!mongoose.Types.ObjectId.isValid(csrId)) {
         throw new BadRequestError("Invalid CSR ID");
@@ -35,11 +30,7 @@ const getLeadsByCSR = asyncWrapper(async (req, res) => {
         .populate("assignedTo", "name email role")
         .sort({ createdAt: -1 });
 
-    res.status(200).json({
-        success: true,
-        data: leads,
-        count: leads.length,
-    });
+    res.status(200).json({ success: true, data: leads, count: leads.length });
 });
 
 // ===============================
@@ -50,158 +41,115 @@ const getLeads = asyncWrapper(async (req, res) => {
         .populate("assignedTo", "name email role")
         .sort({ createdAt: -1 });
 
-    res.status(200).json({
-        success: true,
-        data: leads,
-        count: leads.length,
-    });
+    res.status(200).json({ success: true, data: leads, count: leads.length });
 });
 
 // ===============================
-// Get leads by date
+// Get leads by date filter (Day/Week/Month)
 // ===============================
 const getLeadsByDate = asyncWrapper(async (req, res) => {
     const { filter } = req.query;
     const now = new Date();
     let startDate;
 
-    if (filter === "day") {
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    } else if (filter === "week") {
+    if (filter === "day") startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    else if (filter === "week") {
         const day = now.getDay() || 7;
         startDate = new Date(now);
         startDate.setDate(now.getDate() - day + 1);
-    } else if (filter === "month") {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else {
-        throw new BadRequestError("Invalid filter");
-    }
+    } else if (filter === "month") startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    else throw new BadRequestError("Invalid filter");
 
     const leads = await Lead.find({
         assignedTo: req.user.userId,
         createdAt: { $gte: startDate },
     }).populate("assignedTo", "name email role");
 
-    res.status(200).json({
-        success: true,
-        data: leads,
-        count: leads.length,
-    });
+    res.status(200).json({ success: true, data: leads, count: leads.length });
 });
 
 // ===============================
-// Get single lead
+// Get single lead by ID
 // ===============================
 const getSingleLead = asyncWrapper(async (req, res) => {
-    const lead = await Lead.findById(req.params.id).populate(
-        "assignedTo",
-        "name email role"
-    );
-
+    const lead = await Lead.findById(req.params.id).populate("assignedTo", "name email role");
     if (!lead) throw new NotFoundError("Lead not found");
 
-    if (
-        req.user.role === "csr" &&
-        lead.assignedTo._id.toString() !== req.user.userId
-    ) {
+    if (req.user.role === "csr" && lead.assignedTo._id.toString() !== req.user.userId)
         throw new BadRequestError("Access denied");
-    }
 
     res.status(200).json({ success: true, data: lead });
 });
 
 // ===============================
-// Create Lead
+// Create Lead (Manual Entry)
 // ===============================
 const createLead = asyncWrapper(async (req, res) => {
     const { name, phone, course, source, assignedTo: bodyAssignedTo } = req.body;
+    if (!name || !phone || !course) throw new BadRequestError("Name, phone, and course are required");
 
-    if (!name || !phone || !course) {
-        throw new BadRequestError("Name, phone and course are required");
-    }
-
-    const assignedTo =
-        req.user.role === "admin" ? bodyAssignedTo : req.user.userId;
-
-    if (!mongoose.Types.ObjectId.isValid(assignedTo)) {
-        throw new BadRequestError("Invalid CSR ID");
-    }
+    const assignedTo = req.user.role === "admin" ? bodyAssignedTo : req.user.userId;
+    if (!mongoose.Types.ObjectId.isValid(assignedTo)) throw new BadRequestError("Invalid CSR ID");
 
     const lead = await Lead.create({
-        name,
-        phone,
-        course,
-        source,
+        name: name.trim(),
+        phone: phone.trim(),
+        course: course.trim(),
+        source: source || "Manual",
         assignedTo,
-        createdBy: req.user.userId, // ✅ required fix
+        createdBy: req.user.userId,
+        status: "new",
     });
 
     const populatedLead = await lead.populate("assignedTo", "name email role");
-
-    res.status(201).json({
-        success: true,
-        data: populatedLead,
-    });
+    res.status(201).json({ success: true, data: populatedLead });
 });
 
 // ===============================
-// Update lead
+// Update Lead details
 // ===============================
 const updateLead = asyncWrapper(async (req, res) => {
     const lead = await Lead.findById(req.params.id);
     if (!lead) throw new NotFoundError("Lead not found");
 
     if (req.user.role === "csr") {
-        delete req.body.assignedTo;
-        if (lead.assignedTo.toString() !== req.user.userId) {
-            throw new BadRequestError("Unauthorized");
-        }
+        delete req.body.assignedTo; // CSR cannot re-assign leads
+        if (lead.assignedTo.toString() !== req.user.userId) throw new BadRequestError("Unauthorized");
     }
 
     Object.assign(lead, req.body);
     await lead.save();
-
     const populatedLead = await lead.populate("assignedTo", "name email role");
 
-    res.status(200).json({
-        success: true,
-        data: populatedLead,
-    });
+    res.status(200).json({ success: true, data: populatedLead });
 });
 
 // ===============================
-// Delete lead
+// Delete Lead
 // ===============================
 const deleteLead = asyncWrapper(async (req, res) => {
     const lead = await Lead.findById(req.params.id);
     if (!lead) throw new NotFoundError("Lead not found");
 
-    if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
+    if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId)
         throw new BadRequestError("Unauthorized");
-    }
 
     await lead.deleteOne();
-
-    res.status(200).json({
-        success: true,
-        message: "Lead deleted successfully",
-    });
+    res.status(200).json({ success: true, message: "Lead deleted successfully" });
 });
 
 // ===============================
-// Convert lead to sale
+// Convert Lead to Sale
 // ===============================
 const convertLeadToSale = asyncWrapper(async (req, res) => {
     const { amount } = req.body;
-    if (!amount || amount <= 0)
-        throw new BadRequestError("Amount required");
+    if (!amount || amount <= 0) throw new BadRequestError("Amount required");
 
     const lead = await Lead.findById(req.params.id);
     if (!lead) throw new NotFoundError("Lead not found");
 
-    if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
+    if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId)
         throw new BadRequestError("Unauthorized");
-    }
 
     const sale = await Sale.create({
         lead: lead._id,
@@ -217,50 +165,67 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Upload Excel Leads (CSR) - Updated for array payload
+// Upload Excel Array (CSR Dashboard - FIXED 400 ERROR)
 // ===============================
 const uploadLeads = asyncWrapper(async (req, res) => {
-    const { leads, assignedTo } = req.body;
+    const { leads, assignedTo, csrId } = req.body;
 
-    if (!leads || !Array.isArray(leads) || leads.length === 0) {
+    if (!leads || !Array.isArray(leads) || leads.length === 0)
         throw new BadRequestError("No leads provided or invalid format");
-    }
 
-    // CSR ID (from token) – ignore assignedTo from frontend if user is CSR
-    const csrId = req.user.role === "csr" ? req.user.userId : assignedTo;
-    if (!csrId || !mongoose.Types.ObjectId.isValid(csrId)) {
-        throw new BadRequestError("Invalid CSR ID");
-    }
+    // Logic: Identify target CSR ID correctly
+    const finalCsrId = req.user.role === "csr" ? req.user.userId : (csrId || assignedTo);
+
+    if (!finalCsrId || !mongoose.Types.ObjectId.isValid(finalCsrId))
+        throw new BadRequestError("A valid CSR ID is required for assignment");
 
     const createdBy = req.user.userId;
 
-    // Validate and map leads
-    const leadsToInsert = leads.map((row) => {
-        if (!row.name || !row.phone || !row.course) {
-            throw new BadRequestError("Each lead must have name, phone, and course");
-        }
-        return {
-            name: row.name,
-            phone: row.phone,
-            course: row.course,
-            source: row.source || "Excel Upload",
-            assignedTo: csrId,
-            createdBy,
-        };
-    });
+    // Mapping leads to match your Excel columns (Name, Course, Phone)
+    const processedLeads = leads
+        .map((l) => {
+            const name = l.name || l.Name || "";
+            const phone = l.phone || l.Phone || "";
+            const course = l.course || l.Course || "N/A";
 
-    // Insert all leads
-    await Lead.insertMany(leadsToInsert);
+            return {
+                name: String(name).trim(),
+                phone: String(phone).trim(),
+                course: String(course).trim(),
+                source: "Excel Upload",
+                assignedTo: finalCsrId,
+                createdBy,
+                status: "new",
+            };
+        })
+        .filter((l) => l.name !== "" && l.phone !== ""); // Basic validation filter
 
-    res.status(200).json({
+    if (processedLeads.length === 0) {
+        throw new BadRequestError("No valid leads found in data. Check your Excel headers.");
+    }
+
+    // Optional: Check for existing leads with same phone number to avoid duplicates
+    const phoneNumbers = processedLeads.map(l => l.phone);
+    const existingLeads = await Lead.find({ phone: { $in: phoneNumbers } }).select('phone');
+    const existingPhones = new Set(existingLeads.map(l => l.phone));
+
+    const uniqueLeads = processedLeads.filter(l => !existingPhones.has(l.phone));
+
+    if (uniqueLeads.length === 0) {
+        throw new BadRequestError("All leads in this file already exist in the database.");
+    }
+
+    const insertedLeads = await Lead.insertMany(uniqueLeads);
+
+    res.status(201).json({
         success: true,
-        message: `${leadsToInsert.length} leads uploaded successfully`,
-        count: leadsToInsert.length,
+        message: `${insertedLeads.length} new leads uploaded successfully. ${processedLeads.length - uniqueLeads.length} duplicates skipped.`,
+        count: insertedLeads.length,
     });
 });
 
 // ===============================
-// Bulk Insert Excel (ADMIN)
+// Bulk Insert Excel (Admin Direct File Upload)
 // ===============================
 const bulkInsertLeads = asyncWrapper(async (req, res) => {
     if (!req.file) throw new BadRequestError("No file uploaded");
@@ -269,36 +234,33 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     const jsonData = xlsx.utils.sheet_to_json(worksheet);
 
-    if (!jsonData.length) {
-        throw new BadRequestError("Excel file is empty");
-    }
+    if (!jsonData.length) throw new BadRequestError("Excel file is empty");
 
     const createdBy = req.user.userId;
 
-    const leadsToInsert = jsonData.map((row) => ({
-        name: row.name,
-        phone: row.phone,
-        course: row.course,
-        source: row.source || "Bulk Excel Upload",
-        assignedTo:
-            row.assignedTo && mongoose.Types.ObjectId.isValid(row.assignedTo)
-                ? row.assignedTo
-                : null,
-        createdBy,
-    }));
+    const leadsToInsert = jsonData
+        .filter((row) => (row.Name || row.name) && (row.Phone || row.phone))
+        .map((row) => ({
+            name: String(row.Name || row.name).trim(),
+            phone: String(row.Phone || row.phone).trim(),
+            course: String(row.Course || row.course || "N/A").trim(),
+            source: "Bulk Excel Upload",
+            assignedTo: row.assignedTo && mongoose.Types.ObjectId.isValid(row.assignedTo) ? row.assignedTo : null,
+            createdBy,
+            status: "new",
+        }));
 
-    await Lead.insertMany(leadsToInsert);
+    if (!leadsToInsert.length) throw new BadRequestError("No valid data found in Excel");
+
+    const insertedLeads = await Lead.insertMany(leadsToInsert);
 
     res.status(201).json({
         success: true,
-        message: "Bulk leads inserted successfully",
-        count: leadsToInsert.length,
+        message: `${insertedLeads.length} leads inserted successfully`,
+        count: insertedLeads.length,
     });
 });
 
-// ===============================
-// EXPORT
-// ===============================
 module.exports = {
     createLead,
     getLeads,

@@ -51,7 +51,6 @@ router.post("/convert-to-sale/:id", auth, authorizeRoles("csr", "admin"), conver
 
 // ================= Admin Routes =================
 router.get("/get-all-leads", auth, authorizeRoles("admin"), getAllLeads);
-// Logged-in CSR: get their own leads
 router.get("/csr", auth, getLeadsByCSR);
 
 // ================= Excel & Bulk Upload =================
@@ -64,50 +63,76 @@ router.post("/upload-excel",
 	uploadLeads
 );
 
-// CSR Excel upload (array)
+// CSR Excel upload (array) - now inserts into DB
 router.post("/upload-excel-array",
 	auth,
 	authorizeRoles("csr", "admin"),
-	async (req, res) => {
+	async (req, res, next) => {
+		const LeadModel = require("../models/leads"); // direct model
 		try {
-			const { leads, assignedTo } = req.body; // leads array + csrId
-			if (!leads || !assignedTo) {
-				return res.status(400).json({ success: false, message: "Leads or CSR ID missing" });
+			const { leads, csrId } = req.body;
+			const createdBy = req.user.userId;
+
+			if (!Array.isArray(leads) || !leads.length) {
+				return res.status(400).json({ success: false, message: "Leads array is empty or invalid" });
 			}
 
-			const savedLeads = await Promise.all(
-				leads.map(async (lead) => {
-					return await createLead({
-						name: lead.name,
-						phone: lead.phone,
-						course: lead.course,
-						assignedTo: assignedTo,
-						status: "new",
-					});
-				})
+			const validLeads = leads.filter(
+				(l) => l.name?.trim() && l.phone?.trim() && l.course?.trim()
 			);
 
-			return res.status(201).json({ success: true, message: "Leads uploaded successfully", data: savedLeads });
+			if (!validLeads.length) {
+				return res.status(400).json({ success: false, message: "No valid leads found" });
+			}
+
+			// CSR ID check
+			const assignTo = req.user.role === "csr" ? req.user.userId : csrId;
+
+			const leadsToInsert = validLeads.map((lead) => ({
+				name: lead.name.trim(),
+				phone: lead.phone.trim(),
+				course: lead.course.trim(),
+				assignedTo: assignTo,
+				createdBy,
+				status: "new",
+				source: lead.source || "Excel Upload",
+			}));
+
+			// INSERT INTO DATABASE
+			const insertedLeads = await LeadModel.insertMany(leadsToInsert);
+
+			return res.status(201).json({
+				success: true,
+				message: `${insertedLeads.length} leads uploaded successfully`,
+				data: insertedLeads,
+				count: insertedLeads.length,
+			});
+
 		} catch (err) {
-			console.error(err);
-			res.status(500).json({ success: false, message: "Excel upload failed" });
+			console.error("CSR Excel Upload Error:", err);
+			next(err);
 		}
 	}
 );
 
+// Other Excel endpoints
 router.post("/parse-excel",
 	auth,
 	authorizeRoles("admin"),
 	upload.single("file"),
 	parseExcelFile
 );
+
 router.post("/bulk-insert-excel",
-	auth, authorizeRoles("admin"),
+	auth,
+	authorizeRoles("admin"),
 	upload.single("file"),
 	bulkInsertLeads
 );
+
 router.post("/validate-excel",
-	auth, authorizeRoles("admin"),
+	auth,
+	authorizeRoles("admin"),
 	upload.single("file"),
 	validateExcelData
 );
