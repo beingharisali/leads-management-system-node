@@ -25,31 +25,31 @@ const errorHandlerMiddleware = require("./middleware/error-handler");
 const standardResponse = require("./middleware/standardResponse");
 const requestLogger = require("./middleware/requestLogger");
 
-/* =======================
-   🔥 VERY IMPORTANT PART
-======================= */
-
-// CORS MUST BE FIRST
+// =======================
+// 🔥 CORS
+// =======================
 app.use(
 	cors({
-		origin: process.env.FRONTEND_URL,
-		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+		origin: process.env.FRONTEND_URL || "http://localhost:3000",
+		methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // PATCH included
+		allowedHeaders: ["Content-Type", "Authorization"],
 		credentials: true,
 	})
 );
 
-// allow preflight requests
-app.options("*", cors());
 
-/* ======================= */
-
+// =======================
+// Global Middlewares
+// =======================
 app.use(express.json());
 app.use(requestLogger);
 app.use(helmet());
 app.use(xss());
 app.use(standardResponse);
 
-// routes
+// =======================
+// Routes
+// =======================
 app.use("/api/v1/setup", setupAdminRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/lead", leadRoutes);
@@ -57,10 +57,15 @@ app.use("/api/v1/sale", saleRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/reports", reportRoutes);
 
-// errors
+// =======================
+// Error Handling
+// =======================
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
+// =======================
+// Start Server
+// =======================
 const port = process.env.PORT || 5000;
 
 const start = async () => {
@@ -70,7 +75,7 @@ const start = async () => {
 			console.log(`Server running on port ${port}`)
 		);
 	} catch (error) {
-		console.log(error);
+		console.error(error);
 	}
 };
 

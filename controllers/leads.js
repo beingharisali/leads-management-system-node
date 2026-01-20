@@ -217,36 +217,44 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Upload Excel Leads (CSR)
+// Upload Excel Leads (CSR) - Updated for array payload
 // ===============================
 const uploadLeads = asyncWrapper(async (req, res) => {
-    if (!req.file) throw new BadRequestError("No file uploaded");
+    const { leads, assignedTo } = req.body;
 
-    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    const jsonData = xlsx.utils.sheet_to_json(worksheet);
-
-    if (!jsonData.length) {
-        throw new BadRequestError("Excel file is empty");
+    if (!leads || !Array.isArray(leads) || leads.length === 0) {
+        throw new BadRequestError("No leads provided or invalid format");
     }
 
-    const assignedTo = req.user.userId;
+    // CSR ID (from token) – ignore assignedTo from frontend if user is CSR
+    const csrId = req.user.role === "csr" ? req.user.userId : assignedTo;
+    if (!csrId || !mongoose.Types.ObjectId.isValid(csrId)) {
+        throw new BadRequestError("Invalid CSR ID");
+    }
+
     const createdBy = req.user.userId;
 
-    const leadsToInsert = jsonData.map((row) => ({
-        name: row.name,
-        phone: row.phone,
-        course: row.course,
-        source: row.source || "Excel Upload",
-        assignedTo,
-        createdBy,
-    }));
+    // Validate and map leads
+    const leadsToInsert = leads.map((row) => {
+        if (!row.name || !row.phone || !row.course) {
+            throw new BadRequestError("Each lead must have name, phone, and course");
+        }
+        return {
+            name: row.name,
+            phone: row.phone,
+            course: row.course,
+            source: row.source || "Excel Upload",
+            assignedTo: csrId,
+            createdBy,
+        };
+    });
 
+    // Insert all leads
     await Lead.insertMany(leadsToInsert);
 
     res.status(200).json({
         success: true,
-        message: `${leadsToInsert.length} leads uploaded`,
+        message: `${leadsToInsert.length} leads uploaded successfully`,
         count: leadsToInsert.length,
     });
 });
