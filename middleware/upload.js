@@ -1,30 +1,39 @@
 const multer = require("multer");
 const path = require("path");
 
-// Storage config
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, "uploads/"); // folder create karna: uploads/
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    },
-});
+/**
+ * Memory Storage use karne se server par files jama nahi hongi
+ * aur Excel parsing direct buffer se ho jayegi.
+ */
+const storage = multer.memoryStorage();
 
 // File filter (Excel only)
 const fileFilter = (req, file, cb) => {
-    const filetypes = /xlsx|xls/;
+    // Excel aur CSV ki extensions
+    const filetypes = /xlsx|xls|csv/;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
-    if (mimetype && extname) {
+
+    // Mimetypes check (kuch browsers mein different hote hain isliye extname zyada reliable hai)
+    const mimetype =
+        file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        file.mimetype === "application/vnd.ms-excel" ||
+        file.mimetype === "text/csv";
+
+    if (extname || mimetype) {
         return cb(null, true);
     } else {
-        cb(new Error("Only Excel files are allowed!"));
+        // Agar file excel nahi hai toh error bhejain
+        cb(new Error("Error: Only Excel files (.xlsx, .xls, .csv) are allowed!"), false);
     }
 };
 
-// Multer upload instance
-const upload = multer({ storage, fileFilter });
+// Multer instance with limits
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB maximum limit
+    }
+});
 
 module.exports = upload;
