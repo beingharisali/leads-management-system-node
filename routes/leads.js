@@ -10,16 +10,16 @@ const {
 	updateLead,
 	deleteLead,
 	getAllLeads,
-	convertLeadToSale, // ✅ yaha add karo
+	convertLeadToSale,
 	getLeadsByCSR,
-	uploadLeads,       // Task 24
-	bulkInsertLeads,   // Task 26 + Task 28
+	uploadLeads,
+	bulkInsertLeads,
 } = require("../controllers/leads");
 
 // Excel Controllers
 const {
-	parseExcelFile,    // Task 25
-	validateExcelData, // Task 27
+	parseExcelFile,
+	validateExcelData,
 } = require("../controllers/parseExcel");
 
 // Middleware
@@ -45,37 +45,71 @@ router.post("/create-leads", auth, authorizeRoles("csr", "admin"), createLeadVal
 router.get("/get-single-leads/:id", auth, getSingleLead);
 router.patch("/update-leads/:id", auth, authorizeRoles("csr", "admin"), updateLeadValidator, validateRequest, updateLead);
 router.delete("/delete-leads/:id", auth, authorizeRoles("csr", "admin"), deleteLead);
+
 // Convert Lead to Sale
-// ===============================
-router.post(
-	"/convert-to-sale/:id",
-	auth,
-	authorizeRoles("csr", "admin"),
-	convertLeadToSale
-);
+router.post("/convert-to-sale/:id", auth, authorizeRoles("csr", "admin"), convertLeadToSale);
 
 // ================= Admin Routes =================
 router.get("/get-all-leads", auth, authorizeRoles("admin"), getAllLeads);
 // Logged-in CSR: get their own leads
-router.get("/csr", auth, getLeadsByCSR);  // ✅ NEW
+router.get("/csr", auth, getLeadsByCSR);
 
 // ================= Excel & Bulk Upload =================
+
+// Admin Excel upload
 router.post("/upload-excel",
-	auth, authorizeRoles("admin"),
+	auth,
+	authorizeRoles("admin"),
 	upload.single("file"),
-	uploadLeads);
+	uploadLeads
+);
+
+// CSR Excel upload (array)
+router.post("/upload-excel-array",
+	auth,
+	authorizeRoles("csr", "admin"),
+	async (req, res) => {
+		try {
+			const { leads, assignedTo } = req.body; // leads array + csrId
+			if (!leads || !assignedTo) {
+				return res.status(400).json({ success: false, message: "Leads or CSR ID missing" });
+			}
+
+			const savedLeads = await Promise.all(
+				leads.map(async (lead) => {
+					return await createLead({
+						name: lead.name,
+						phone: lead.phone,
+						course: lead.course,
+						assignedTo: assignedTo,
+						status: "new",
+					});
+				})
+			);
+
+			return res.status(201).json({ success: true, message: "Leads uploaded successfully", data: savedLeads });
+		} catch (err) {
+			console.error(err);
+			res.status(500).json({ success: false, message: "Excel upload failed" });
+		}
+	}
+);
+
 router.post("/parse-excel",
 	auth,
 	authorizeRoles("admin"),
 	upload.single("file"),
-	parseExcelFile);
+	parseExcelFile
+);
 router.post("/bulk-insert-excel",
 	auth, authorizeRoles("admin"),
 	upload.single("file"),
-	bulkInsertLeads);
+	bulkInsertLeads
+);
 router.post("/validate-excel",
 	auth, authorizeRoles("admin"),
 	upload.single("file"),
-	validateExcelData);
+	validateExcelData
+);
 
 module.exports = router;
