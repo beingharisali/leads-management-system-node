@@ -379,3 +379,23 @@
     at feed (D:\Web Development Course\LMS\leads-management-system-node\node_modules\streamsearch\lib\sbmh.js:219:14)
     at SBMH.push (D:\Web Development Course\LMS\leads-management-system-node\node_modules\streamsearch\lib\sbmh.js:104:16)
     at Multipart._write (D:\Web Development Course\LMS\leads-management-system-node\node_modules\busboy\lib\types\multipart.js:567:19)
+2026-01-20 23:24:56 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-20 23:24:56 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 11:30:07 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 11:30:16 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 11:31:54 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 11:32:00 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 11:32:05 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 11:32:13 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 11:32:26 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 11:32:38 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 11:34:22 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 12:42:53 [error] : CustomAPIError: Only admin can create users | POST /api/v1/auth/register
+2026-01-21 12:43:15 [error] : CustomAPIError: Only admin can create users | POST /api/v1/auth/register
+2026-01-21 12:43:22 [error] : CustomAPIError: Only admin can create users | POST /api/v1/auth/register
+2026-01-21 12:43:38 [error] : CustomAPIError: Only admin can create users | POST /api/v1/auth/register
+2026-01-21 13:51:25 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 13:53:04 [error] : CustomAPIError: Only admin can create users | POST /api/v1/auth/register
+2026-01-21 13:54:51 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 13:55:40 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-21 13:55:56 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login

@@ -147,23 +147,30 @@ const deleteLead = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Convert Lead to Sale
+// Convert Lead to Sale (FIXED LOGIC)
 // ===============================
 const convertLeadToSale = asyncWrapper(async (req, res) => {
     const { amount } = req.body;
-    if (!amount || amount <= 0) throw new BadRequestError("Valid amount is required");
+
+    // Amount validation
+    if (!amount || isNaN(amount) || amount <= 0) {
+        throw new BadRequestError("A valid numeric amount greater than 0 is required");
+    }
 
     const lead = await Lead.findById(req.params.id);
     if (!lead) throw new NotFoundError("Lead not found");
 
+    // 1. Create Sale Record
     const sale = await Sale.create({
         lead: lead._id,
         csr: lead.assignedTo,
-        amount,
+        amount: Number(amount),
         status: "completed",
     });
 
+    // 2. Update Lead Record (Crucial for Dashboard)
     lead.status = "converted";
+    lead.saleAmount = Number(amount); // Yahan hum lead ke andar amount save kar rahe hain
     await lead.save();
 
     res.status(201).json({ success: true, data: sale });

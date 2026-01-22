@@ -2,28 +2,40 @@ const multer = require("multer");
 const path = require("path");
 
 /**
- * Memory Storage use karne se server par files jama nahi hongi
- * aur Excel parsing direct buffer se ho jayegi.
+ * Memory Storage: Production (Render/Vercel) ke liye behtareen hai 
+ * kyunki wahan temporary files save karne ki permission nahi hoti.
  */
 const storage = multer.memoryStorage();
 
-// File filter (Excel only)
+// File filter (Excel only) - Fully Updated
 const fileFilter = (req, file, cb) => {
-    // Excel aur CSV ki extensions
+    // 1. Allowed Extensions
     const filetypes = /xlsx|xls|csv/;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
 
-    // Mimetypes check (kuch browsers mein different hote hain isliye extname zyada reliable hai)
-    const mimetype =
-        file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-        file.mimetype === "application/vnd.ms-excel" ||
-        file.mimetype === "text/csv";
+    /**
+     * 2. Mimetypes Check
+     * Added 'application/octet-stream' kyunki Vercel/Render par Excel files
+     * aksar isi type mein receive hoti hain.
+     */
+    const allowedMimeTypes = [
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+        "application/vnd.ms-excel",                                        // .xls
+        "text/csv",                                                         // .csv
+        "application/octet-stream"                                          // Production Fix
+    ];
 
-    if (extname || mimetype) {
+    const isMimeValid = allowedMimeTypes.includes(file.mimetype);
+
+    // Agar Extension sahi ho ya MimeType sahi ho, toh file allow karein
+    if (extname || isMimeValid) {
         return cb(null, true);
     } else {
-        // Agar file excel nahi hai toh error bhejain
-        cb(new Error("Error: Only Excel files (.xlsx, .xls, .csv) are allowed!"), false);
+        /**
+         * Ye wahi error message hai jo aapko frontend par mil raha tha.
+         * Isse update karne se validation aur mazboot ho jayegi.
+         */
+        cb(new Error("Only Excel files are allowed!"), false);
     }
 };
 
@@ -32,7 +44,7 @@ const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB maximum limit
+        fileSize: 10 * 1024 * 1024 // 10MB limit
     }
 });
 
