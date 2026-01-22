@@ -147,12 +147,11 @@ const deleteLead = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Convert Lead to Sale (FIXED LOGIC)
+// Convert Lead to Sale
 // ===============================
 const convertLeadToSale = asyncWrapper(async (req, res) => {
     const { amount } = req.body;
 
-    // Amount validation
     if (!amount || isNaN(amount) || amount <= 0) {
         throw new BadRequestError("A valid numeric amount greater than 0 is required");
     }
@@ -160,7 +159,6 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
     const lead = await Lead.findById(req.params.id);
     if (!lead) throw new NotFoundError("Lead not found");
 
-    // 1. Create Sale Record
     const sale = await Sale.create({
         lead: lead._id,
         csr: lead.assignedTo,
@@ -168,9 +166,8 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
         status: "completed",
     });
 
-    // 2. Update Lead Record (Crucial for Dashboard)
     lead.status = "converted";
-    lead.saleAmount = Number(amount); // Yahan hum lead ke andar amount save kar rahe hain
+    lead.saleAmount = Number(amount);
     await lead.save();
 
     res.status(201).json({ success: true, data: sale });
@@ -205,10 +202,17 @@ const uploadLeads = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Bulk Insert Excel (File / Admin)
+// Bulk Insert Excel (Admin Assignment FIXED)
 // ===============================
 const bulkInsertLeads = asyncWrapper(async (req, res) => {
     if (!req.file) throw new BadRequestError("No file uploaded");
+
+    // Frontend se bheji gayi CSR ID receive karein
+    const { csrId } = req.body;
+
+    if (!csrId || !mongoose.Types.ObjectId.isValid(csrId)) {
+        throw new BadRequestError("Please select a valid CSR to assign these leads.");
+    }
 
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -221,7 +225,7 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
             phone: String(row.Phone || row.phone || row.PHONE).trim().replace(/\s/g, ""),
             course: String(row.Course || row.course || row.COURSE || "N/A").trim(),
             source: "Bulk Excel Upload",
-            assignedTo: req.user.userId,
+            assignedTo: csrId, // Yahan specific CSR assign ho raha hai
             createdBy: req.user.userId,
             status: "new",
         }));
@@ -230,7 +234,12 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
         const inserted = await Lead.insertMany(leadsToInsert, { ordered: false });
         res.status(201).json({ success: true, count: inserted.length });
     } catch (error) {
-        res.status(201).json({ success: true, count: error.result ? error.result.nInserted : 0 });
+        // Partial success handling (duplicate entries error skip)
+        res.status(201).json({
+            success: true,
+            count: error.result ? error.result.nInserted : 0,
+            message: "Import finished with some entries skip or partial success"
+        });
     }
 });
 
