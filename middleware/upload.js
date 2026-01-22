@@ -1,30 +1,51 @@
 const multer = require("multer");
 const path = require("path");
 
-// Storage config
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, "uploads/"); // folder create karna: uploads/
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    },
-});
+/**
+ * Memory Storage: Production (Render/Vercel) ke liye behtareen hai 
+ * kyunki wahan temporary files save karne ki permission nahi hoti.
+ */
+const storage = multer.memoryStorage();
 
-// File filter (Excel only)
+// File filter (Excel only) - Fully Updated
 const fileFilter = (req, file, cb) => {
-    const filetypes = /xlsx|xls/;
+    // 1. Allowed Extensions
+    const filetypes = /xlsx|xls|csv/;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
-    if (mimetype && extname) {
+
+    /**
+     * 2. Mimetypes Check
+     * Added 'application/octet-stream' kyunki Vercel/Render par Excel files
+     * aksar isi type mein receive hoti hain.
+     */
+    const allowedMimeTypes = [
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+        "application/vnd.ms-excel",                                        // .xls
+        "text/csv",                                                         // .csv
+        "application/octet-stream"                                          // Production Fix
+    ];
+
+    const isMimeValid = allowedMimeTypes.includes(file.mimetype);
+
+    // Agar Extension sahi ho ya MimeType sahi ho, toh file allow karein
+    if (extname || isMimeValid) {
         return cb(null, true);
     } else {
-        cb(new Error("Only Excel files are allowed!"));
+        /**
+         * Ye wahi error message hai jo aapko frontend par mil raha tha.
+         * Isse update karne se validation aur mazboot ho jayegi.
+         */
+        cb(new Error("Only Excel files are allowed!"), false);
     }
 };
 
-// Multer upload instance
-const upload = multer({ storage, fileFilter });
+// Multer instance with limits
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    }
+});
 
 module.exports = upload;

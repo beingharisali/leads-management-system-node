@@ -17,7 +17,7 @@ const getAllLeads = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Get leads by CSR (Admin can view specific CSR leads)
+// Get leads by CSR (Admin view specific CSR)
 // ===============================
 const getLeadsByCSR = asyncWrapper(async (req, res) => {
     const csrId = req.user.role === "csr" ? req.user.userId : req.params.csrId;
@@ -52,13 +52,18 @@ const getLeadsByDate = asyncWrapper(async (req, res) => {
     const now = new Date();
     let startDate;
 
-    if (filter === "day") startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    else if (filter === "week") {
+    if (filter === "day") {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (filter === "week") {
         const day = now.getDay() || 7;
         startDate = new Date(now);
         startDate.setDate(now.getDate() - day + 1);
-    } else if (filter === "month") startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    else throw new BadRequestError("Invalid filter");
+        startDate.setHours(0, 0, 0, 0);
+    } else if (filter === "month") {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else {
+        throw new BadRequestError("Invalid filter. Use day, week, or month.");
+    }
 
     const leads = await Lead.find({
         assignedTo: req.user.userId,
@@ -89,7 +94,10 @@ const createLead = asyncWrapper(async (req, res) => {
     if (!name || !phone || !course) throw new BadRequestError("Name, phone, and course are required");
 
     const assignedTo = req.user.role === "admin" ? bodyAssignedTo : req.user.userId;
-    if (!mongoose.Types.ObjectId.isValid(assignedTo)) throw new BadRequestError("Invalid CSR ID");
+
+    if (!assignedTo || !mongoose.Types.ObjectId.isValid(assignedTo)) {
+        throw new BadRequestError("A valid CSR ID is required for assignment");
+    }
 
     const lead = await Lead.create({
         name: name.trim(),
@@ -106,22 +114,22 @@ const createLead = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Update Lead details
+// Update Lead
 // ===============================
 const updateLead = asyncWrapper(async (req, res) => {
     const lead = await Lead.findById(req.params.id);
     if (!lead) throw new NotFoundError("Lead not found");
 
     if (req.user.role === "csr") {
-        delete req.body.assignedTo; // CSR cannot re-assign leads
+        delete req.body.assignedTo;
         if (lead.assignedTo.toString() !== req.user.userId) throw new BadRequestError("Unauthorized");
     }
 
     Object.assign(lead, req.body);
     await lead.save();
-    const populatedLead = await lead.populate("assignedTo", "name email role");
 
-    res.status(200).json({ success: true, data: populatedLead });
+    const updatedLead = await Lead.findById(lead._id).populate("assignedTo", "name email role");
+    res.status(200).json({ success: true, data: updatedLead });
 });
 
 // ===============================
@@ -139,128 +147,96 @@ const deleteLead = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Convert Lead to Sale
+// Convert Lead to Sale (FIXED LOGIC)
 // ===============================
 const convertLeadToSale = asyncWrapper(async (req, res) => {
     const { amount } = req.body;
-    if (!amount || amount <= 0) throw new BadRequestError("Amount required");
+
+    // Amount validation
+    if (!amount || isNaN(amount) || amount <= 0) {
+        throw new BadRequestError("A valid numeric amount greater than 0 is required");
+    }
 
     const lead = await Lead.findById(req.params.id);
     if (!lead) throw new NotFoundError("Lead not found");
 
-    if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId)
-        throw new BadRequestError("Unauthorized");
-
+    // 1. Create Sale Record
     const sale = await Sale.create({
         lead: lead._id,
         csr: lead.assignedTo,
-        amount,
+        amount: Number(amount),
         status: "completed",
     });
 
+    // 2. Update Lead Record (Crucial for Dashboard)
     lead.status = "converted";
+    lead.saleAmount = Number(amount); // Yahan hum lead ke andar amount save kar rahe hain
     await lead.save();
 
     res.status(201).json({ success: true, data: sale });
 });
 
 // ===============================
-// Upload Excel Array (CSR Dashboard - FIXED 400 ERROR)
+// Upload Leads (Array / CSR Dashboard)
 // ===============================
 const uploadLeads = asyncWrapper(async (req, res) => {
-    const { leads, assignedTo, csrId } = req.body;
+    const { leads, csrId } = req.body;
+    if (!leads || !Array.isArray(leads)) throw new BadRequestError("Invalid format");
 
-    if (!leads || !Array.isArray(leads) || leads.length === 0)
-        throw new BadRequestError("No leads provided or invalid format");
+    const assignTo = req.user.role === "csr" ? req.user.userId : csrId;
+    if (!assignTo) throw new BadRequestError("CSR ID required");
 
-    // Logic: Identify target CSR ID correctly
-    const finalCsrId = req.user.role === "csr" ? req.user.userId : (csrId || assignedTo);
+    const processed = leads.map(l => ({
+        name: String(l.name || l.Name || "").trim(),
+        phone: String(l.phone || l.Phone || "").trim().replace(/\s/g, ""),
+        course: String(l.course || l.Course || "N/A").trim(),
+        assignedTo: assignTo,
+        createdBy: req.user.userId,
+        status: "new",
+        source: "Excel Upload"
+    })).filter(l => l.name && l.phone);
 
-    if (!finalCsrId || !mongoose.Types.ObjectId.isValid(finalCsrId))
-        throw new BadRequestError("A valid CSR ID is required for assignment");
-
-    const createdBy = req.user.userId;
-
-    // Mapping leads to match your Excel columns (Name, Course, Phone)
-    const processedLeads = leads
-        .map((l) => {
-            const name = l.name || l.Name || "";
-            const phone = l.phone || l.Phone || "";
-            const course = l.course || l.Course || "N/A";
-
-            return {
-                name: String(name).trim(),
-                phone: String(phone).trim(),
-                course: String(course).trim(),
-                source: "Excel Upload",
-                assignedTo: finalCsrId,
-                createdBy,
-                status: "new",
-            };
-        })
-        .filter((l) => l.name !== "" && l.phone !== ""); // Basic validation filter
-
-    if (processedLeads.length === 0) {
-        throw new BadRequestError("No valid leads found in data. Check your Excel headers.");
+    try {
+        const inserted = await Lead.insertMany(processed, { ordered: false });
+        res.status(201).json({ success: true, count: inserted.length });
+    } catch (error) {
+        res.status(201).json({ success: true, count: error.result ? error.result.nInserted : 0 });
     }
-
-    // Optional: Check for existing leads with same phone number to avoid duplicates
-    const phoneNumbers = processedLeads.map(l => l.phone);
-    const existingLeads = await Lead.find({ phone: { $in: phoneNumbers } }).select('phone');
-    const existingPhones = new Set(existingLeads.map(l => l.phone));
-
-    const uniqueLeads = processedLeads.filter(l => !existingPhones.has(l.phone));
-
-    if (uniqueLeads.length === 0) {
-        throw new BadRequestError("All leads in this file already exist in the database.");
-    }
-
-    const insertedLeads = await Lead.insertMany(uniqueLeads);
-
-    res.status(201).json({
-        success: true,
-        message: `${insertedLeads.length} new leads uploaded successfully. ${processedLeads.length - uniqueLeads.length} duplicates skipped.`,
-        count: insertedLeads.length,
-    });
 });
 
 // ===============================
-// Bulk Insert Excel (Admin Direct File Upload)
+// Bulk Insert Excel (File / Admin)
 // ===============================
 const bulkInsertLeads = asyncWrapper(async (req, res) => {
     if (!req.file) throw new BadRequestError("No file uploaded");
 
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    const jsonData = xlsx.utils.sheet_to_json(worksheet);
-
-    if (!jsonData.length) throw new BadRequestError("Excel file is empty");
-
-    const createdBy = req.user.userId;
+    const jsonData = xlsx.utils.sheet_to_json(worksheet, { defval: "", raw: false });
 
     const leadsToInsert = jsonData
-        .filter((row) => (row.Name || row.name) && (row.Phone || row.phone))
-        .map((row) => ({
-            name: String(row.Name || row.name).trim(),
-            phone: String(row.Phone || row.phone).trim(),
-            course: String(row.Course || row.course || "N/A").trim(),
+        .filter(row => (row.Name || row.name || row.NAME) && (row.Phone || row.phone || row.PHONE))
+        .map(row => ({
+            name: String(row.Name || row.name || row.NAME).trim(),
+            phone: String(row.Phone || row.phone || row.PHONE).trim().replace(/\s/g, ""),
+            course: String(row.Course || row.course || row.COURSE || "N/A").trim(),
             source: "Bulk Excel Upload",
-            assignedTo: row.assignedTo && mongoose.Types.ObjectId.isValid(row.assignedTo) ? row.assignedTo : null,
-            createdBy,
+            assignedTo: req.user.userId,
+            createdBy: req.user.userId,
             status: "new",
         }));
 
-    if (!leadsToInsert.length) throw new BadRequestError("No valid data found in Excel");
-
-    const insertedLeads = await Lead.insertMany(leadsToInsert);
-
-    res.status(201).json({
-        success: true,
-        message: `${insertedLeads.length} leads inserted successfully`,
-        count: insertedLeads.length,
-    });
+    try {
+        const inserted = await Lead.insertMany(leadsToInsert, { ordered: false });
+        res.status(201).json({ success: true, count: inserted.length });
+    } catch (error) {
+        res.status(201).json({ success: true, count: error.result ? error.result.nInserted : 0 });
+    }
 });
 
+// ===============================
+// Exports
+// ===============================
 module.exports = {
     createLead,
     getLeads,

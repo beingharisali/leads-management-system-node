@@ -34,100 +34,58 @@ const {
 } = require("../middleware/leadValidator");
 const validateRequest = require("../middleware/validateRequest");
 
-// ================= CSR Routes ================
-// CSR / Admin: Get leads by CSR
-router.get("/csr/:csrId", auth, getLeadsByCSR);
+// ================= Shared Routes (Admin & CSR) ================
 
-// Individual CSR lead fetch
+// Get leads assigned to CSR or specific CSR for Admin
+router.get("/csr/:csrId", auth, getLeadsByCSR);
 router.get("/get-leads", auth, getLeads);
+
+// Lead Management
 router.get("/get-leads-by-date", auth, getLeadsByDateValidator, validateRequest, getLeadsByDate);
 router.post("/create-leads", auth, authorizeRoles("csr", "admin"), createLeadValidator, validateRequest, createLead);
 router.get("/get-single-leads/:id", auth, getSingleLead);
 router.patch("/update-leads/:id", auth, authorizeRoles("csr", "admin"), updateLeadValidator, validateRequest, updateLead);
 router.delete("/delete-leads/:id", auth, authorizeRoles("csr", "admin"), deleteLead);
 
-// Convert Lead to Sale
+// Sales Conversion
 router.post("/convert-to-sale/:id", auth, authorizeRoles("csr", "admin"), convertLeadToSale);
 
-// ================= Admin Routes =================
+// ================= Admin Only Routes =================
 router.get("/get-all-leads", auth, authorizeRoles("admin"), getAllLeads);
-router.get("/csr", auth, getLeadsByCSR);
+router.get("/csr", auth, authorizeRoles("admin"), getLeadsByCSR);
 
-// ================= Excel & Bulk Upload =================
+// ================= Excel & Bulk Upload (Updated) =================
 
-// Admin Excel upload
-router.post("/upload-excel",
+/**
+ * 1. Bulk Insert from File (Admin Dashboard)
+ * FIXED: Added "csr" to authorizeRoles so that if an admin is acting as a CSR or 
+ * vice versa, the request doesn't fail with 500/403.
+ */
+router.post("/bulk-insert-excel",
 	auth,
-	authorizeRoles("admin"),
+	authorizeRoles("admin", "csr"),
 	upload.single("file"),
-	uploadLeads
+	bulkInsertLeads
 );
 
-// CSR Excel upload (array) - now inserts into DB
+/**
+ * 2. Upload JSON Array (CSR Dashboard Preview)
+ * FIXED: Uses the optimized uploadLeads controller function
+ */
 router.post("/upload-excel-array",
 	auth,
 	authorizeRoles("csr", "admin"),
-	async (req, res, next) => {
-		const LeadModel = require("../models/leads"); // direct model
-		try {
-			const { leads, csrId } = req.body;
-			const createdBy = req.user.userId;
-
-			if (!Array.isArray(leads) || !leads.length) {
-				return res.status(400).json({ success: false, message: "Leads array is empty or invalid" });
-			}
-
-			const validLeads = leads.filter(
-				(l) => l.name?.trim() && l.phone?.trim() && l.course?.trim()
-			);
-
-			if (!validLeads.length) {
-				return res.status(400).json({ success: false, message: "No valid leads found" });
-			}
-
-			// CSR ID check
-			const assignTo = req.user.role === "csr" ? req.user.userId : csrId;
-
-			const leadsToInsert = validLeads.map((lead) => ({
-				name: lead.name.trim(),
-				phone: lead.phone.trim(),
-				course: lead.course.trim(),
-				assignedTo: assignTo,
-				createdBy,
-				status: "new",
-				source: lead.source || "Excel Upload",
-			}));
-
-			// INSERT INTO DATABASE
-			const insertedLeads = await LeadModel.insertMany(leadsToInsert);
-
-			return res.status(201).json({
-				success: true,
-				message: `${insertedLeads.length} leads uploaded successfully`,
-				data: insertedLeads,
-				count: insertedLeads.length,
-			});
-
-		} catch (err) {
-			console.error("CSR Excel Upload Error:", err);
-			next(err);
-		}
-	}
+	uploadLeads
 );
 
-// Other Excel endpoints
+/**
+ * 3. General Excel Utils
+ */
 router.post("/parse-excel",
 	auth,
 	authorizeRoles("admin"),
 	upload.single("file"),
 	parseExcelFile
-);
-
-router.post("/bulk-insert-excel",
-	auth,
-	authorizeRoles("admin"),
-	upload.single("file"),
-	bulkInsertLeads
 );
 
 router.post("/validate-excel",
