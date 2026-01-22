@@ -399,3 +399,16 @@
 2026-01-21 13:54:51 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
 2026-01-21 13:55:40 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
 2026-01-21 13:55:56 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-22 14:37:27 [error] : CustomAPIError: No file uploaded | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 14:39:50 [error] : CustomAPIError: No file uploaded | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 14:43:48 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 14:50:43 [error] : CustomAPIError: No file uploaded | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 15:37:09 [error] : CustomAPIError: No file uploaded | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 15:43:23 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 15:44:24 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 15:45:27 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 15:45:27 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 15:45:55 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 15:47:57 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 15:50:12 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
+2026-01-22 15:51:40 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
