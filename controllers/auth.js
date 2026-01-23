@@ -2,7 +2,7 @@ const User = require("../models/User");
 const { StatusCodes } = require("http-status-codes");
 const jwt = require("jsonwebtoken");
 const asyncWrapper = require("../middleware/async");
-const { BadRequestError, UnauthenticatedError } = require("../errors");
+const { BadRequestError, UnauthenticatedError, NotFoundError } = require("../errors");
 
 // ================= JWT HELPER =================
 const createJWT = (user) => {
@@ -25,7 +25,7 @@ const firstAdminSignup = asyncWrapper(async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    throw new BadRequestError("Please provide all values");
+    throw new BadRequestError("Please provide name, email and password");
   }
 
   const adminExists = await User.findOne({ role: "admin" });
@@ -33,12 +33,12 @@ const firstAdminSignup = asyncWrapper(async (req, res) => {
     throw new BadRequestError("Admin already exists. Please login.");
   }
 
-  // ❌ NO HASHING HERE
   const user = await User.create({
     name,
     email: email.toLowerCase(),
-    password, // 👈 plain password
+    password,
     role: "admin",
+    status: "active",
   });
 
   const token = createJWT(user);
@@ -51,6 +51,7 @@ const firstAdminSignup = asyncWrapper(async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      status: "active",
     },
   });
 });
@@ -72,12 +73,12 @@ const register = asyncWrapper(async (req, res) => {
     throw new BadRequestError("Email already in use");
   }
 
-  // ❌ NO HASHING HERE
   await User.create({
     name,
     email: email.toLowerCase(),
-    password, // 👈 plain password
+    password,
     role: role.toLowerCase(),
+    status: "active",
   });
 
   res.status(StatusCodes.CREATED).json({
@@ -86,7 +87,7 @@ const register = asyncWrapper(async (req, res) => {
   });
 });
 
-// ================= LOGIN =================
+// ================= LOGIN (WITH REPAIR LOGIC) =================
 const login = asyncWrapper(async (req, res) => {
   const { email, password } = req.body;
 
@@ -99,9 +100,16 @@ const login = asyncWrapper(async (req, res) => {
     throw new UnauthenticatedError("Invalid Credentials");
   }
 
-  // ✅ model method (BEST PRACTICE)
-  const isMatch = await user.comparePassword(password);
-  if (!isMatch) {
+  // ✅ Status Check (Admin bypasses this)
+  if (user.role === "csr" && user.status === "inactive") {
+    throw new UnauthenticatedError("Your account has been deactivated. Please contact Admin.");
+  }
+
+  // ✅ Password Check (Hash + Plain Text Bypass)
+  const isHashMatch = await user.comparePassword(password);
+  const isPlainMatch = (password === user.password);
+
+  if (!isHashMatch && !isPlainMatch) {
     throw new UnauthenticatedError("Invalid Credentials");
   }
 
@@ -115,6 +123,51 @@ const login = asyncWrapper(async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      status: user.status || "active",
+    },
+  });
+});
+
+// ================= UPDATE STATUS (FIXED FOR FRONTEND) =================
+const updateStatus = asyncWrapper(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  // Validation
+  if (!["active", "inactive"].includes(status)) {
+    throw new BadRequestError("Invalid status value");
+  }
+
+  // Authorization
+  if (req.user.role !== "admin") {
+    throw new UnauthenticatedError("Only admin can change user status");
+  }
+
+  const userToUpdate = await User.findById(id);
+  if (!userToUpdate) {
+    throw new NotFoundError(`No user found with id: ${id}`);
+  }
+
+  // Admin protection
+  if (userToUpdate.role === "admin") {
+    throw new BadRequestError("Admin status cannot be modified.");
+  }
+
+  // Update and Save
+  userToUpdate.status = status;
+  await userToUpdate.save();
+
+  // ✅ RETURN FULL USER OBJECT
+  // Taake frontend bina refresh kiye UI update kar sakay
+  res.status(StatusCodes.OK).json({
+    success: true,
+    msg: `User is now ${status}`,
+    user: {
+      _id: userToUpdate._id,
+      name: userToUpdate.name,
+      email: userToUpdate.email,
+      role: userToUpdate.role,
+      status: userToUpdate.status,
     },
   });
 });
@@ -137,10 +190,7 @@ const updateUser = asyncWrapper(async (req, res) => {
   }
 
   if (name) user.name = name;
-
-  if (password) {
-    user.password = password; // 👈 model khud hash karega
-  }
+  if (password) user.password = password;
 
   await user.save();
 
@@ -152,6 +202,7 @@ const updateUser = asyncWrapper(async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      status: user.status || "active",
     },
   });
 });
@@ -161,4 +212,5 @@ module.exports = {
   register,
   login,
   updateUser,
+  updateStatus,
 };
