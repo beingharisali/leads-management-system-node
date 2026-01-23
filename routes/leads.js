@@ -9,6 +9,7 @@ const {
 	getSingleLead,
 	updateLead,
 	deleteLead,
+	deleteAllLeads, // Admin function
 	getAllLeads,
 	convertLeadToSale,
 	getLeadsByCSR,
@@ -16,7 +17,6 @@ const {
 	bulkInsertLeads,
 } = require("../controllers/leads");
 
-// Excel Controllers
 const {
 	parseExcelFile,
 	validateExcelData,
@@ -34,65 +34,44 @@ const {
 } = require("../middleware/leadValidator");
 const validateRequest = require("../middleware/validateRequest");
 
-// ================= Shared Routes (Admin & CSR) ================
+/* =============================================================================
+  IMPORTANT: Route Ordering
+  Specific routes (like /delete-all) must be ABOVE dynamic routes (like /:id)
+  =============================================================================
+*/
 
-// Get leads assigned to CSR or specific CSR for Admin
-router.get("/csr/:csrId", auth, getLeadsByCSR);
-router.get("/get-leads", auth, getLeads);
+// 1. --- Admin Only (High Priority) ---
 
-// Lead Management
-router.get("/get-leads-by-date", auth, getLeadsByDateValidator, validateRequest, getLeadsByDate);
-router.post("/create-leads", auth, authorizeRoles("csr", "admin"), createLeadValidator, validateRequest, createLead);
-router.get("/get-single-leads/:id", auth, getSingleLead);
-router.patch("/update-leads/:id", auth, authorizeRoles("csr", "admin"), updateLeadValidator, validateRequest, updateLead);
-router.delete("/delete-leads/:id", auth, authorizeRoles("csr", "admin"), deleteLead);
+// Isay sabse upar rakhein taake Express isay ID na samjhe
+router.delete("/delete-all", auth, authorizeRoles("admin"), deleteAllLeads);
 
-// Sales Conversion
-router.post("/convert-to-sale/:id", auth, authorizeRoles("csr", "admin"), convertLeadToSale);
-
-// ================= Admin Only Routes =================
 router.get("/get-all-leads", auth, authorizeRoles("admin"), getAllLeads);
 router.get("/csr", auth, authorizeRoles("admin"), getLeadsByCSR);
 
-// ================= Excel & Bulk Upload (Updated) =================
+// 2. --- Shared Routes (Fixed Paths) ---
 
-/**
- * 1. Bulk Insert from File (Admin Dashboard)
- * FIXED: Added "csr" to authorizeRoles so that if an admin is acting as a CSR or 
- * vice versa, the request doesn't fail with 500/403.
- */
-router.post("/bulk-insert-excel",
-	auth,
-	authorizeRoles("admin", "csr"),
-	upload.single("file"),
-	bulkInsertLeads
-);
+router.get("/csr/:csrId", auth, getLeadsByCSR);
+router.get("/get-leads", auth, getLeads);
+router.get("/get-leads-by-date", auth, getLeadsByDateValidator, validateRequest, getLeadsByDate);
 
-/**
- * 2. Upload JSON Array (CSR Dashboard Preview)
- * FIXED: Uses the optimized uploadLeads controller function
- */
-router.post("/upload-excel-array",
-	auth,
-	authorizeRoles("csr", "admin"),
-	uploadLeads
-);
+// 3. --- Lead Operations (Creation & Bulk) ---
 
-/**
- * 3. General Excel Utils
- */
-router.post("/parse-excel",
-	auth,
-	authorizeRoles("admin"),
-	upload.single("file"),
-	parseExcelFile
-);
+router.post("/create-leads", auth, authorizeRoles("csr", "admin"), createLeadValidator, validateRequest, createLead);
 
-router.post("/validate-excel",
-	auth,
-	authorizeRoles("admin"),
-	upload.single("file"),
-	validateExcelData
-);
+// Bulk Operations
+router.post("/bulk-insert-excel", auth, authorizeRoles("admin", "csr"), upload.single("file"), bulkInsertLeads);
+router.post("/upload-excel-array", auth, authorizeRoles("csr", "admin"), uploadLeads);
+
+// Excel Utils
+router.post("/parse-excel", auth, authorizeRoles("admin"), upload.single("file"), parseExcelFile);
+router.post("/validate-excel", auth, authorizeRoles("admin"), upload.single("file"), validateExcelData);
+
+// 4. --- Dynamic Routes (Low Priority - ID Based) ---
+// Note: Yeh routes hamesha aakhir mein aane chahiye
+
+router.get("/get-single-leads/:id", auth, getSingleLead);
+router.patch("/update-leads/:id", auth, authorizeRoles("csr", "admin"), updateLeadValidator, validateRequest, updateLead);
+router.delete("/delete-leads/:id", auth, authorizeRoles("csr", "admin"), deleteLead);
+router.post("/convert-to-sale/:id", auth, authorizeRoles("csr", "admin"), convertLeadToSale);
 
 module.exports = router;

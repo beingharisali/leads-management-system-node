@@ -6,6 +6,7 @@ const {
     register,
     login,
     updateUser,
+    updateStatus, // ✅ Add krdia
 } = require('../controllers/auth');
 
 const { auth } = require('../middleware/authentication');
@@ -22,5 +23,8 @@ router.post('/login', asyncWrapper(login));
 
 // ===== UPDATE PROFILE =====
 router.put('/updateUser', auth, asyncWrapper(updateUser));
+
+// ===== UPDATE CSR STATUS (ADMIN ONLY) =====
+router.patch('/update-status/:id', auth, asyncWrapper(updateStatus));
 
 module.exports = router;

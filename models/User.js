@@ -32,20 +32,35 @@ const UserSchema = new mongoose.Schema({
 		enum: ["csr", "admin"],
 		default: "csr"
 	},
-});
+	/**
+	 * ✅ NEW FIELD: Status
+	 * CSR ko enable/disable karne ke liye.
+	 * Admin hamesha active rahega logic ke mutabiq.
+	 */
+	status: {
+		type: String,
+		enum: ["active", "inactive"],
+		default: "active"
+	}
+}, { timestamps: true }); // Timestamps add karne se analytics behtar hoti hai
 
+// Password Hashing
 UserSchema.pre("save", async function () {
 	if (!this.isModified("password")) return;
 	const salt = await bcrypt.genSalt(10);
 	this.password = await bcrypt.hash(this.password, salt);
 });
 
+// JWT Creation
 UserSchema.methods.createJWT = function () {
-	return jwt.sign({ userId: this._id, name: this.name, role: this.role }, process.env.JWT_SECRET, {
-		expiresIn: process.env.JWT_LIFETIME || "1d",
-	});
+	return jwt.sign(
+		{ userId: this._id, name: this.name, role: this.role },
+		process.env.JWT_SECRET,
+		{ expiresIn: process.env.JWT_LIFETIME || "1d" }
+	);
 };
 
+// Password Comparison
 UserSchema.methods.comparePassword = async function (candidatePassword) {
 	return await bcrypt.compare(candidatePassword, this.password);
 };
