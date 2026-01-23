@@ -412,3 +412,35 @@
 2026-01-22 15:47:57 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
 2026-01-22 15:50:12 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
 2026-01-22 15:51:40 [error] : CustomAPIError: Please select a valid CSR to assign these leads. | POST /api/v1/lead/bulk-insert-excel
+2026-01-23 11:22:13 [error] : next is not a function | PATCH /api/v1/lead/update-leads/6973128540bcca30a03edf7d | Stack: TypeError: next is not a function
+    at model.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:81:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:129:5
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 11:22:15 [error] : next is not a function | PATCH /api/v1/lead/update-leads/6973128540bcca30a03edf7d | Stack: TypeError: next is not a function
+    at model.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:81:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:129:5
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 11:28:57 [error] : next is not a function | PATCH /api/v1/lead/update-leads/6973128540bcca30a03edf7d | Stack: TypeError: next is not a function
+    at model.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:81:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:129:5
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 11:29:08 [error] : next is not a function | PATCH /api/v1/lead/update-leads/6973128540bcca30a03edf7d | Stack: TypeError: next is not a function
+    at model.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:81:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:129:5
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
