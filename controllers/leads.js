@@ -114,21 +114,32 @@ const createLead = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Update Lead
+// UPDATE LEAD (FIXED & SECURE)
 // ===============================
 const updateLead = asyncWrapper(async (req, res) => {
-    const lead = await Lead.findById(req.params.id);
+    const { id } = req.params;
+
+    // Check if lead exists
+    const lead = await Lead.findById(id);
     if (!lead) throw new NotFoundError("Lead not found");
 
+    // Authorization check for CSR
     if (req.user.role === "csr") {
+        if (lead.assignedTo.toString() !== req.user.userId) {
+            throw new BadRequestError("Unauthorized to edit this lead");
+        }
+        // CSR ko assignedTo change nahi karne dena
         delete req.body.assignedTo;
-        if (lead.assignedTo.toString() !== req.user.userId) throw new BadRequestError("Unauthorized");
+        delete req.body._id; // ID cannot be updated
     }
 
-    Object.assign(lead, req.body);
-    await lead.save();
+    // Use findByIdAndUpdate for better stability with populated fields
+    const updatedLead = await Lead.findByIdAndUpdate(
+        id,
+        { $set: req.body },
+        { new: true, runValidators: true }
+    ).populate("assignedTo", "name email role");
 
-    const updatedLead = await Lead.findById(lead._id).populate("assignedTo", "name email role");
     res.status(200).json({ success: true, data: updatedLead });
 });
 
@@ -147,17 +158,23 @@ const deleteLead = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Convert Lead to Sale
+// Convert Lead to Sale (FIXED)
 // ===============================
 const convertLeadToSale = asyncWrapper(async (req, res) => {
     const { amount } = req.body;
+    const { id } = req.params;
 
     if (!amount || isNaN(amount) || amount <= 0) {
         throw new BadRequestError("A valid numeric amount greater than 0 is required");
     }
 
-    const lead = await Lead.findById(req.params.id);
+    const lead = await Lead.findById(id);
     if (!lead) throw new NotFoundError("Lead not found");
+
+    // CSR Check
+    if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
+        throw new BadRequestError("Unauthorized");
+    }
 
     const sale = await Sale.create({
         lead: lead._id,
@@ -166,15 +183,18 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
         status: "completed",
     });
 
-    lead.status = "converted";
-    lead.saleAmount = Number(amount);
-    await lead.save();
+    // Update status using findOneAndUpdate to avoid populate errors during save()
+    const updatedLead = await Lead.findByIdAndUpdate(
+        id,
+        { status: "converted", saleAmount: Number(amount) },
+        { new: true }
+    );
 
     res.status(201).json({ success: true, data: sale });
 });
 
 // ===============================
-// Upload Leads (Array / CSR Dashboard)
+// Upload Leads (Array)
 // ===============================
 const uploadLeads = asyncWrapper(async (req, res) => {
     const { leads, csrId } = req.body;
@@ -202,12 +222,11 @@ const uploadLeads = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
-// Bulk Insert Excel (Admin Assignment FIXED)
+// Bulk Insert Excel
 // ===============================
 const bulkInsertLeads = asyncWrapper(async (req, res) => {
     if (!req.file) throw new BadRequestError("No file uploaded");
 
-    // Frontend se bheji gayi CSR ID receive karein
     const { csrId } = req.body;
 
     if (!csrId || !mongoose.Types.ObjectId.isValid(csrId)) {
@@ -225,7 +244,7 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
             phone: String(row.Phone || row.phone || row.PHONE).trim().replace(/\s/g, ""),
             course: String(row.Course || row.course || row.COURSE || "N/A").trim(),
             source: "Bulk Excel Upload",
-            assignedTo: csrId, // Yahan specific CSR assign ho raha hai
+            assignedTo: csrId,
             createdBy: req.user.userId,
             status: "new",
         }));
@@ -234,7 +253,6 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
         const inserted = await Lead.insertMany(leadsToInsert, { ordered: false });
         res.status(201).json({ success: true, count: inserted.length });
     } catch (error) {
-        // Partial success handling (duplicate entries error skip)
         res.status(201).json({
             success: true,
             count: error.result ? error.result.nInserted : 0,
@@ -243,9 +261,6 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
     }
 });
 
-// ===============================
-// Exports
-// ===============================
 module.exports = {
     createLead,
     getLeads,
