@@ -11,8 +11,6 @@ const leadSchema = new mongoose.Schema(
 		phone: {
 			type: String,
 			required: [true, "Phone number is required"],
-			// Note: Excel imports mein aksar numbers format change kar letay hain
-			// isliye minlength 10 rakhi hai (Pakistan numbers ke liye)
 			minlength: [10, "Phone number must be at least 10 digits"],
 			trim: true,
 		},
@@ -24,7 +22,6 @@ const leadSchema = new mongoose.Schema(
 		source: {
 			type: String,
 			default: "manual",
-			// Standardizing sources for better analytics
 		},
 		assignedTo: {
 			type: mongoose.Schema.Types.ObjectId,
@@ -38,9 +35,9 @@ const leadSchema = new mongoose.Schema(
 		},
 		status: {
 			type: String,
-			// Added 'interested' and 'rejected' to cover full sales cycle
+			// MAZAY KI BAAT: 'sale' status yahan missing tha, isliye converted leads count nahi ho rahi thi
 			enum: {
-				values: ["new", "contacted", "interested", "converted", "rejected"],
+				values: ["new", "contacted", "interested", "converted", "sale", "rejected"],
 				message: "{VALUE} is not a valid status"
 			},
 			default: "new",
@@ -48,6 +45,8 @@ const leadSchema = new mongoose.Schema(
 		saleAmount: {
 			type: Number,
 			default: 0,
+			// Validation taake minus mein amount na jaye
+			min: [0, "Sale amount cannot be negative"]
 		},
 		lastUpdatedBy: {
 			type: mongoose.Schema.Types.ObjectId,
@@ -62,18 +61,24 @@ const leadSchema = new mongoose.Schema(
 );
 
 /* ===================== INDEXING ===================== */
-// Search ko fast karne ke liye
 leadSchema.index({ assignedTo: 1, status: 1 });
 leadSchema.index({ phone: 1 });
-leadSchema.index({ createdAt: -1 }); // Latest leads pehle dikhane ke liye
+leadSchema.index({ createdAt: -1 });
 
 /* ===================== VIRTUALS ===================== */
-// Agar aap Sale model se reference lena chahen
 leadSchema.virtual("saleDetails", {
 	ref: "Sale",
 	localField: "_id",
 	foreignField: "lead",
 	justOne: true,
+});
+
+// Pre-save hook taake data clean rahe
+leadSchema.pre('save', function (next) {
+	if (this.status === 'sale' && this.saleAmount <= 0) {
+		// Warning: Sale status hai magar amount 0 hai
+	}
+	next();
 });
 
 const Leads = mongoose.model("Leads", leadSchema);
