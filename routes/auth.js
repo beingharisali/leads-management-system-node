@@ -6,25 +6,41 @@ const {
     register,
     login,
     updateUser,
-    updateStatus, // ✅ Add krdia
+    updateStatus,
+    getAllCSRs, // ✅ Sab CSRs ko dekhne ke liye
+    getSingleUser // ✅ Profile check karne ke liye
 } = require('../controllers/auth');
 
-const { auth } = require('../middleware/authentication');
+// Middleware: 'auth' for login check, 'authorizeRoles' for Admin-only access
+const { auth, authorizeRoles } = require('../middleware/authentication');
 const asyncWrapper = require('../middleware/async');
 
-// ===== FIRST ADMIN SIGNUP =====
+// ================= PUBLIC ROUTES =================
+router.post('/login', asyncWrapper(login));
 router.post('/first-admin-signup', asyncWrapper(firstAdminSignup));
 
-// ===== REGISTER (ADMIN ONLY) =====
-router.post('/register', auth, asyncWrapper(register));
-
-// ===== LOGIN =====
-router.post('/login', asyncWrapper(login));
-
-// ===== UPDATE PROFILE =====
+// ================= PROTECTED ROUTES (All Logged-in Users) =================
+router.get('/me', auth, asyncWrapper(getSingleUser));
 router.put('/updateUser', auth, asyncWrapper(updateUser));
 
-// ===== UPDATE CSR STATUS (ADMIN ONLY) =====
-router.patch('/update-status/:id', auth, asyncWrapper(updateStatus));
+// ================= ADMIN ONLY ROUTES =================
+// Note: authorizeRoles('admin') lagana lazmi hai taake CSRs register na kar saken
+router.post('/register',
+    auth,
+    authorizeRoles('admin'),
+    asyncWrapper(register)
+);
+
+router.get('/team-members',
+    auth,
+    authorizeRoles('admin'),
+    asyncWrapper(getAllCSRs)
+);
+
+router.patch('/update-status/:id',
+    auth,
+    authorizeRoles('admin'),
+    asyncWrapper(updateStatus)
+);
 
 module.exports = router;

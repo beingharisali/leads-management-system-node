@@ -4,7 +4,7 @@ const leadSchema = new mongoose.Schema(
 	{
 		name: {
 			type: String,
-			required: [true, "Enter the name of lead"],
+			required: [true, "Lead name is required"],
 			minlength: [2, "Name must be at least 2 characters"],
 			trim: true,
 		},
@@ -19,6 +19,11 @@ const leadSchema = new mongoose.Schema(
 			required: [true, "Course name is required"],
 			trim: true,
 		},
+		city: {
+			type: String,
+			trim: true,
+			default: "Unknown",
+		},
 		source: {
 			type: String,
 			default: "manual",
@@ -31,40 +36,63 @@ const leadSchema = new mongoose.Schema(
 		createdBy: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User",
-			required: true,
+			required: [true, "Creator ID is required"],
 		},
 		status: {
 			type: String,
-			// MAZAY KI BAAT: 'sale' status yahan missing tha, isliye converted leads count nahi ho rahi thi
+			lowercase: true,
+			trim: true,
 			enum: {
-				values: ["new", "contacted", "interested", "converted", "sale", "rejected"],
-				message: "{VALUE} is not a valid status"
+				// ✅ Added "not pick", "busy", "wrong number" to prevent 500 Errors
+				values: [
+					"new",
+					"contacted",
+					"interested",
+					"converted",
+					"sale",
+					"rejected",
+					"follow-up",
+					"paid",
+					"not pick",
+					"busy",
+					"wrong number"
+				],
+				message: "{VALUE} is not a supported status"
 			},
 			default: "new",
+		},
+		// ✅ Using camelCase to match Frontend API calls
+		followUpDate: {
+			type: Date,
+		},
+		remarks: {
+			type: String,
+			trim: true,
 		},
 		saleAmount: {
 			type: Number,
 			default: 0,
-			// Validation taake minus mein amount na jaye
 			min: [0, "Sale amount cannot be negative"]
+		},
+		convertedAt: {
+			type: Date,
 		},
 		lastUpdatedBy: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User",
 		}
-
 	},
 	{
 		timestamps: true,
 		toJSON: { virtuals: true },
 		toObject: { virtuals: true }
 	}
-
 );
 
 /* ===================== INDEXING ===================== */
+// Search speed behtar karne ke liye
+leadSchema.index({ name: 'text', phone: 'text' });
 leadSchema.index({ assignedTo: 1, status: 1 });
-leadSchema.index({ phone: 1 });
 leadSchema.index({ createdAt: -1 });
 
 /* ===================== VIRTUALS ===================== */
@@ -75,13 +103,22 @@ leadSchema.virtual("saleDetails", {
 	justOne: true,
 });
 
-// Pre-save hook taake data clean rahe
-leadSchema.pre('save', function (next) {
-	if (this.status === 'sale' && this.saleAmount <= 0) {
-		// Warning: Sale status hai magar amount 0 hai
+/* ===================== MIDDLEWARE (FIXED) ===================== */
+
+// Save hook (for .create and .save)
+leadSchema.pre('save', async function (next) {
+	if (this.isModified('status') && (this.status === 'sale' || this.status === 'paid')) {
+		this.convertedAt = Date.now();
 	}
 	next();
 });
 
-const Leads = mongoose.model("Leads", leadSchema);
+// Update hook (for findByIdAndUpdate / findOneAndUpdate)
+// Ismein 'next' ko hata dein aur normal function use karein
+leadSchema.pre('findOneAndUpdate', function () {
+	this.set({ updatedAt: Date.now() });
+	// Note: Query middleware mein 'next' ki aksar zaroorat nahi hoti agar async na ho
+});
+// Model Export
+const Leads = mongoose.models.Leads || mongoose.model("Leads", leadSchema);
 module.exports = Leads;
