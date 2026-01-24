@@ -22,7 +22,6 @@ const getAllLeads = asyncWrapper(async (req, res) => {
 const getLeadsByCSR = asyncWrapper(async (req, res) => {
     const { csrId } = req.params;
 
-    // Safety check for ID
     if (!mongoose.Types.ObjectId.isValid(csrId)) {
         throw new BadRequestError("Invalid CSR ID");
     }
@@ -38,7 +37,6 @@ const getLeadsByCSR = asyncWrapper(async (req, res) => {
 const getLeads = asyncWrapper(async (req, res) => {
     const { search } = req.query;
 
-    // Logic: Agar CSR hai toh sirf uski leads, agar Admin hai toh sab (agar assignedTo provide nahi kiya)
     let query = {};
     if (req.user.role === "csr") {
         query.assignedTo = req.user.userId;
@@ -79,7 +77,7 @@ const getLeadsByDate = asyncWrapper(async (req, res) => {
     res.status(200).json({ success: true, count: leads.length, data: leads });
 });
 
-// 5. Convert Lead to Sale (Atomic Transaction)
+// 5. Convert Lead to Sale
 const convertLeadToSale = asyncWrapper(async (req, res) => {
     const { amount, remarks, paymentMethod } = req.body;
     const { id } = req.params;
@@ -89,7 +87,6 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
     const lead = await Lead.findById(id);
     if (!lead) throw new NotFoundError("Lead not found");
 
-    // Status normalization: Check both 'sale' and 'paid'
     const normalizedStatus = lead.status.toLowerCase();
     if (normalizedStatus === 'sale' || normalizedStatus === 'paid') {
         throw new BadRequestError("Lead already converted");
@@ -108,9 +105,10 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
         }], { session });
 
         await Lead.findByIdAndUpdate(id, {
-            status: "paid", // UI consistency ke liye 'paid' use kar rahe hain
+            status: "paid",
             saleAmount: Number(amount),
-            convertedAt: Date.now()
+            convertedAt: Date.now(),
+            lastUpdatedBy: req.user.userId // Added tracking
         }, { session, new: true });
 
         await session.commitTransaction();
@@ -138,6 +136,8 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
         course: (row.Course || row.course || "General").trim(),
         assignedTo: csrId,
         createdBy: req.user.userId,
+        city: (row.City || row.city || "Unknown").trim(),
+        source: (row.Source || row.source || "excel").toLowerCase(),
         status: "new"
     })).filter(l => l.phone.length >= 10);
 
@@ -147,29 +147,35 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
     res.status(201).json({ success: true, count: result.length });
 });
 
-// 7. Create Lead (Fixed Naming & Sanitization)
+// 7. Create Lead (Fully Sanitized & Tracking Added)
 const createLead = asyncWrapper(async (req, res) => {
-    const { name, phone, course, assignedTo, status, remarks, city, followUpDate } = req.body;
+    const { name, phone, course, assignedTo, status, remarks, city, source, followUpDate } = req.body;
 
-    if (!req.user || !req.user.userId) throw new UnauthenticatedError("Auth invalid");
+    // Safety check for user session
+    const creatorId = req.user?.userId || req.user?.id;
+    if (!creatorId) throw new UnauthenticatedError("Session expired. Please login again.");
 
+    // Clean phone number
     const cleanPhone = phone ? String(phone).replace(/[^\d+]/g, "") : "";
 
+    // Prepare data based on Schema
     const leadData = {
         name: name?.trim(),
         phone: cleanPhone,
         course: course || "General",
         assignedTo: assignedTo,
-        createdBy: req.user.userId,
+        createdBy: creatorId, // Model required: true
         status: status?.toLowerCase() || "new",
         remarks: remarks || "",
         city: city || "Unknown",
-        followUpDate: followUpDate || null // camelCase consistent with Frontend
+        source: source || "manual",
+        followUpDate: followUpDate || null
     };
 
-    if (!leadData.name || leadData.phone.length < 10 || !leadData.assignedTo) {
-        throw new BadRequestError("Name, 10-digit Phone, and CSR selection are required.");
-    }
+    // Strict validation to prevent 500 internal errors
+    if (!leadData.name) throw new BadRequestError("Lead name is required");
+    if (leadData.phone.length < 10) throw new BadRequestError("Valid 10-digit phone number is required");
+    if (!leadData.assignedTo) throw new BadRequestError("Lead must be assigned to an agent");
 
     const lead = await Lead.create(leadData);
     res.status(201).json({ success: true, data: lead });
@@ -182,8 +188,8 @@ const updateLead = asyncWrapper(async (req, res) => {
     if (updateData.status) updateData.status = updateData.status.toLowerCase();
     if (updateData.phone) updateData.phone = String(updateData.phone).replace(/[^\d+]/g, "");
 
-    // Ensure naming consistency for dates
-    if (updateData.followUpDate) updateData.followUpDate = updateData.followUpDate;
+    // Add tracking for who updated it last
+    updateData.lastUpdatedBy = req.user.userId;
 
     const lead = await Lead.findByIdAndUpdate(req.params.id, updateData, {
         new: true,
@@ -202,7 +208,7 @@ const deleteLead = asyncWrapper(async (req, res) => {
 });
 
 const deleteAllLeads = asyncWrapper(async (req, res) => {
-    if (req.user.role !== "admin") throw new UnauthenticatedError("Unauthorized");
+    if (req.user.role !== "admin") throw new UnauthenticatedError("Only Admin can wipe database");
     await Lead.deleteMany({});
     res.status(200).json({ success: true, message: "Database Cleared" });
 });

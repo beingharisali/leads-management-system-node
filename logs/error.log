@@ -548,3 +548,162 @@
 2026-01-23 22:47:54 [error] : CustomAPIError: Your account has been deactivated. Please contact Admin. | POST /api/v1/auth/login
 2026-01-23 22:48:03 [error] : CustomAPIError: Your account has been deactivated. Please contact Admin. | POST /api/v1/auth/login
 2026-01-23 22:49:37 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-24 11:14:37 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-24 15:02:55 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-24 15:45:47 [error] : CustomAPIError: Your account has been deactivated. Please contact Admin. | POST /api/v1/auth/login
+2026-01-24 16:02:23 [error] : next is not a function | POST /api/v1/lead/create | Stack: TypeError: next is not a function
+    at model.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:113:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2722:9
+    at async Promise.all (index 0)
+    at async Function.create (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2707:11)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:174:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:04:23 [error] : next is not a function | POST /api/v1/lead/create | Stack: TypeError: next is not a function
+    at model.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:113:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2722:9
+    at async Promise.all (index 0)
+    at async Function.create (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2707:11)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:174:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:07:09 [error] : next is not a function | POST /api/v1/lead/create | Stack: TypeError: next is not a function
+    at model.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:113:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2722:9
+    at async Promise.all (index 0)
+    at async Function.create (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2707:11)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:180:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:07:57 [error] : next is not a function | POST /api/v1/lead/create | Stack: TypeError: next is not a function
+    at model.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:113:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2722:9
+    at async Promise.all (index 0)
+    at async Function.create (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2707:11)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:180:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:12:20 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:123:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:12:26 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:123:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:12:37 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:123:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:14:11 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:130:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:14:17 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:130:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:14:24 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:130:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:14:32 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:130:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:18:01 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:130:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:18:09 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:130:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:24:36 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:130:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:24:40 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:130:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:29:27 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:130:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:29:42 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:130:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-24 16:32:12 [error] : next is not a function | PATCH /api/v1/lead/6974a8d330e5fa2329e26e79 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:134:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:194:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
