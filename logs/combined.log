@@ -445,3 +445,106 @@
     at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:129:5
     at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
 2026-01-23 16:11:55 [error] : CustomAPIError: Your account has been deactivated. Please contact Admin. | POST /api/v1/auth/login
+2026-01-23 19:11:04 [error] : New is not a valid status | POST /api/v1/lead/create | Stack: ValidationError: Leads validation failed: status: New is not a valid status
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 5)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-23 19:19:18 [error] : Phone number must be at least 10 digits, New is not a valid status | POST /api/v1/lead/create | Stack: ValidationError: Leads validation failed: phone: Phone number must be at least 10 digits, status: New is not a valid status
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 1)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-23 19:26:43 [error] : Phone number must be at least 10 digits | POST /api/v1/lead/create | Stack: ValidationError: Leads validation failed: phone: Phone number must be at least 10 digits
+    at Document.invalidate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3370:32)
+    at validatePath (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3145:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Promise.all (index 1)
+    at async model.$__validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:3086:3)
+    at async model.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\document.js:2663:5)
+    at async model.validateBeforeSave (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\plugins\validateBeforeSave.js:34:7)
+    at async Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:65:24)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+2026-01-23 19:27:21 [error] : next is not a function | POST /api/v1/lead/create | Stack: TypeError: next is not a function
+    at model.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:100:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:369:5)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2722:9
+    at async Promise.all (index 0)
+    at async Function.create (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2707:11)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:147:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 21:11:56 [error] : next is not a function | PATCH /api/v1/lead/69738bfe5661c649fd141b58 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:104:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:188:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 21:12:06 [error] : next is not a function | PATCH /api/v1/lead/69738bfe5661c649fd141b58 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:104:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:188:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 21:12:08 [error] : next is not a function | PATCH /api/v1/lead/69738bfe5661c649fd141b58 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:104:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:188:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 21:12:17 [error] : next is not a function | PATCH /api/v1/lead/69738bfe5661c649fd141b58 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:104:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:188:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 21:17:27 [error] : next is not a function | PATCH /api/v1/lead/69738bfe5661c649fd141b58 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:118:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:188:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 21:17:55 [error] : next is not a function | PATCH /api/v1/lead/69738bfe5661c649fd141b58 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:118:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:188:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 21:18:25 [error] : next is not a function | PATCH /api/v1/lead/69738bfe5661c649fd141b58 | Stack: TypeError: next is not a function
+    at model.Query.<anonymous> (D:\Web Development Course\LMS\leads-management-system-node\models\leads.js:118:2)
+    at Kareem.execPre (D:\Web Development Course\LMS\leads-management-system-node\node_modules\kareem\index.js:63:39)
+    at _executePreHooks (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4677:33)
+    at model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4626:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:188:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-01-23 22:47:54 [error] : CustomAPIError: Your account has been deactivated. Please contact Admin. | POST /api/v1/auth/login
+2026-01-23 22:48:03 [error] : CustomAPIError: Your account has been deactivated. Please contact Admin. | POST /api/v1/auth/login
+2026-01-23 22:49:37 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
