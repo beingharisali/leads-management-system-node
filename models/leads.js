@@ -43,7 +43,6 @@ const leadSchema = new mongoose.Schema(
 			lowercase: true,
 			trim: true,
 			enum: {
-				// ✅ Added "not pick", "busy", "wrong number" to prevent 500 Errors
 				values: [
 					"new",
 					"contacted",
@@ -61,7 +60,6 @@ const leadSchema = new mongoose.Schema(
 			},
 			default: "new",
 		},
-		// ✅ Using camelCase to match Frontend API calls
 		followUpDate: {
 			type: Date,
 		},
@@ -90,7 +88,6 @@ const leadSchema = new mongoose.Schema(
 );
 
 /* ===================== INDEXING ===================== */
-// Search speed behtar karne ke liye
 leadSchema.index({ name: 'text', phone: 'text' });
 leadSchema.index({ assignedTo: 1, status: 1 });
 leadSchema.index({ createdAt: -1 });
@@ -103,22 +100,41 @@ leadSchema.virtual("saleDetails", {
 	justOne: true,
 });
 
-/* ===================== MIDDLEWARE (FIXED) ===================== */
+/* ===================== MIDDLEWARE ===================== */
 
-// Save hook (for .create and .save)
-leadSchema.pre('save', async function (next) {
-	if (this.isModified('status') && (this.status === 'sale' || this.status === 'paid')) {
-		this.convertedAt = Date.now();
+// Save hook (Lead create karte waqt chalta hai)
+leadSchema.pre('save', async function () {
+	if (this.isModified('status')) {
+		const currentStatus = this.status ? this.status.toLowerCase() : '';
+		if (currentStatus === 'sale' || currentStatus === 'paid') {
+			this.convertedAt = Date.now();
+		}
 	}
-	next();
+	// Async function mein next() ki zaroorat nahi hoti
 });
 
-// Update hook (for findByIdAndUpdate / findOneAndUpdate)
-// Ismein 'next' ko hata dein aur normal function use karein
-leadSchema.pre('findOneAndUpdate', function () {
+// Update hook (PATCH request ke liye)
+// Humne 'next' hata diya hai aur 'async' add kiya hai taake error na aaye
+leadSchema.pre('findOneAndUpdate', async function () {
+	const update = this.getUpdate();
+
+	if (!update) return;
+
+	// Check if status is being updated
+	const newStatus = update.status || (update.$set && update.$set.status);
+
+	if (newStatus) {
+		const normalizedStatus = newStatus.toLowerCase();
+		if (normalizedStatus === 'sale' || normalizedStatus === 'paid') {
+			// Hum directly query par set kar rahe hain
+			this.set({ convertedAt: Date.now() });
+		}
+	}
+
+	// Updated at hamesha set hoga
 	this.set({ updatedAt: Date.now() });
-	// Note: Query middleware mein 'next' ki aksar zaroorat nahi hoti agar async na ho
 });
+
 // Model Export
 const Leads = mongoose.models.Leads || mongoose.model("Leads", leadSchema);
 module.exports = Leads;
