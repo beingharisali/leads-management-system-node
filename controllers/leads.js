@@ -77,7 +77,7 @@ const getLeadsByDate = asyncWrapper(async (req, res) => {
     res.status(200).json({ success: true, count: leads.length, data: leads });
 });
 
-// 5. Convert Lead to Sale
+// 5. Convert Lead to Sale (Fixed: Transactions Removed for Local MongoDB)
 const convertLeadToSale = asyncWrapper(async (req, res) => {
     const { amount, remarks, paymentMethod } = req.body;
     const { id } = req.params;
@@ -92,33 +92,29 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
         throw new BadRequestError("Lead already converted");
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-        const sale = await Sale.create([{
-            lead: lead._id,
-            csr: lead.assignedTo,
-            amount: Number(amount),
-            course: lead.course,
-            remarks: remarks || "Direct conversion",
-            paymentMethod: paymentMethod || "Bank Transfer"
-        }], { session });
+    // Direct Create without Session to avoid Replica Set Error
+    const sale = await Sale.create({
+        lead: lead._id,
+        csr: lead.assignedTo,
+        amount: Number(amount),
+        course: lead.course,
+        remarks: remarks || "Direct conversion",
+        paymentMethod: paymentMethod || "Bank Transfer"
+    });
 
-        await Lead.findByIdAndUpdate(id, {
-            status: "paid",
-            saleAmount: Number(amount),
-            convertedAt: Date.now(),
-            lastUpdatedBy: req.user.userId // Added tracking
-        }, { session, new: true });
+    // Update Lead status and amount
+    const updatedLead = await Lead.findByIdAndUpdate(id, {
+        status: "paid",
+        saleAmount: Number(amount),
+        convertedAt: Date.now(),
+        lastUpdatedBy: req.user.userId
+    }, { new: true });
 
-        await session.commitTransaction();
-        res.status(201).json({ success: true, data: sale[0] });
-    } catch (error) {
-        await session.abortTransaction();
-        throw error;
-    } finally {
-        session.endSession();
-    }
+    res.status(201).json({
+        success: true,
+        message: "Sale record created successfully",
+        data: sale
+    });
 });
 
 // 6. Bulk Insert Excel
@@ -147,24 +143,21 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
     res.status(201).json({ success: true, count: result.length });
 });
 
-// 7. Create Lead (Fully Sanitized & Tracking Added)
+// 7. Create Lead
 const createLead = asyncWrapper(async (req, res) => {
     const { name, phone, course, assignedTo, status, remarks, city, source, followUpDate } = req.body;
 
-    // Safety check for user session
     const creatorId = req.user?.userId || req.user?.id;
     if (!creatorId) throw new UnauthenticatedError("Session expired. Please login again.");
 
-    // Clean phone number
     const cleanPhone = phone ? String(phone).replace(/[^\d+]/g, "") : "";
 
-    // Prepare data based on Schema
     const leadData = {
         name: name?.trim(),
         phone: cleanPhone,
         course: course || "General",
         assignedTo: assignedTo,
-        createdBy: creatorId, // Model required: true
+        createdBy: creatorId,
         status: status?.toLowerCase() || "new",
         remarks: remarks || "",
         city: city || "Unknown",
@@ -172,7 +165,6 @@ const createLead = asyncWrapper(async (req, res) => {
         followUpDate: followUpDate || null
     };
 
-    // Strict validation to prevent 500 internal errors
     if (!leadData.name) throw new BadRequestError("Lead name is required");
     if (leadData.phone.length < 10) throw new BadRequestError("Valid 10-digit phone number is required");
     if (!leadData.assignedTo) throw new BadRequestError("Lead must be assigned to an agent");
@@ -188,7 +180,6 @@ const updateLead = asyncWrapper(async (req, res) => {
     if (updateData.status) updateData.status = updateData.status.toLowerCase();
     if (updateData.phone) updateData.phone = String(updateData.phone).replace(/[^\d+]/g, "");
 
-    // Add tracking for who updated it last
     updateData.lastUpdatedBy = req.user.userId;
 
     const lead = await Lead.findByIdAndUpdate(req.params.id, updateData, {
