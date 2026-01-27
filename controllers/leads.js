@@ -33,15 +33,18 @@ const getLeadsByCSR = asyncWrapper(async (req, res) => {
     res.status(200).json({ success: true, count: leads.length, data: leads });
 });
 
-// 3. Smart Get Leads (Handles Admin, CSR, and Search)
+// 3. Smart Get Leads (FIXED: Ab yeh Date Filters handle karega)
 const getLeads = asyncWrapper(async (req, res) => {
-    const { search } = req.query;
+    const { search, filter, start, end } = req.query;
 
     let query = {};
+
+    // Role based filtering
     if (req.user.role === "csr") {
         query.assignedTo = req.user.userId;
     }
 
+    // Search logic
     if (search) {
         query.$or = [
             { name: { $regex: search, $options: "i" } },
@@ -49,6 +52,29 @@ const getLeads = asyncWrapper(async (req, res) => {
             { course: { $regex: search, $options: "i" } },
             { city: { $regex: search, $options: "i" } }
         ];
+    }
+
+    // Date Filtering Logic (Added to sync with Dashboard)
+    if (filter) {
+        const now = new Date();
+        if (filter === "day") {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            query.createdAt = { $gte: today };
+        } else if (filter === "week") {
+            const lastWeek = new Date();
+            lastWeek.setDate(now.getDate() - 7);
+            query.createdAt = { $gte: lastWeek };
+        } else if (filter === "month") {
+            const lastMonth = new Date();
+            lastMonth.setMonth(now.getMonth() - 1);
+            query.createdAt = { $gte: lastMonth };
+        } else if (filter === "custom" && start && end) {
+            query.createdAt = {
+                $gte: new Date(new Date(start).setHours(0, 0, 0, 0)),
+                $lte: new Date(new Date(end).setHours(23, 59, 59, 999))
+            };
+        }
     }
 
     const leads = await Lead.find(query)
@@ -92,7 +118,6 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
         throw new BadRequestError("Lead already converted");
     }
 
-    // Direct Create without Session to avoid Replica Set Error
     const sale = await Sale.create({
         lead: lead._id,
         csr: lead.assignedTo,
@@ -102,7 +127,6 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
         paymentMethod: paymentMethod || "Bank Transfer"
     });
 
-    // Update Lead status and amount
     const updatedLead = await Lead.findByIdAndUpdate(id, {
         status: "paid",
         saleAmount: Number(amount),

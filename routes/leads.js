@@ -36,7 +36,7 @@ router.delete("/admin/delete-all", auth, authorizeRoles("admin"), deleteAllLeads
 
 // --- 2. BULK & EXCEL OPERATIONS ---
 // Admin can upload, CSRs can only upload if you explicitly allow them
-router.post("/bulk/upload-excel", auth, authorizeRoles("admin"), upload.single("file"), bulkInsertLeads);
+router.post("/bulk/upload-excel", auth, authorizeRoles("admin", "csr"), upload.single("file"), bulkInsertLeads);
 router.post("/excel/parse", auth, authorizeRoles("admin"), upload.single("file"), parseExcelFile);
 router.post("/excel/validate", auth, authorizeRoles("admin"), upload.single("file"), validateExcelData);
 

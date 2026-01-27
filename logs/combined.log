@@ -740,3 +740,28 @@
     at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:398:16)
     at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
     at async D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2722:9
+2026-01-26 22:04:08 [error] : CustomAPIError: Please select a CSR to assign leads | POST /api/v1/lead/bulk/upload-excel
+2026-01-27 02:27:12 [error] : CustomAPIError: No file uploaded | POST /api/v1/lead/bulk/upload-excel
+2026-01-27 02:27:37 [error] : CustomAPIError: No file uploaded | POST /api/v1/lead/bulk/upload-excel
+2026-01-27 02:47:47 [error] : CustomAPIError: No file uploaded | POST /api/v1/lead/bulk/upload-excel
+2026-01-27 02:54:35 [error] : CustomAPIError: No file uploaded | POST /api/v1/lead/bulk/upload-excel
+2026-01-27 02:55:12 [error] : CustomAPIError: No file uploaded | POST /api/v1/lead/bulk/upload-excel
+2026-01-27 02:56:06 [error] : CustomAPIError: No file uploaded | POST /api/v1/lead/bulk/upload-excel
+2026-01-27 12:46:37 [error] : CustomAPIError: Please select a CSR to assign leads | POST /api/v1/lead/bulk/upload-excel
+2026-01-27 12:46:49 [error] : CustomAPIError: Please select a CSR to assign leads | POST /api/v1/lead/bulk/upload-excel
+2026-01-27 13:06:17 [error] : CustomAPIError: Please provide all values | POST /api/v1/auth/register
+2026-01-27 13:06:19 [error] : CustomAPIError: Please provide all values | POST /api/v1/auth/register
+2026-01-27 13:21:19 [error] : Duplicate value entered for email field, please choose another value | POST /api/v1/auth/register | Stack: MongoServerError: E11000 duplicate key error collection: leads_management.users index: email_1 dup key: { email: "maazdon1@gmail.com" }
+    at InsertOneOperation.handleOk (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongodb\lib\operations\insert.js:51:19)
+    at tryOperation (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongodb\lib\operations\execute_operation.js:216:34)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async executeOperation (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongodb\lib\operations\execute_operation.js:80:16)
+    at async Collection.insertOne (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongodb\lib\collection.js:154:16)
+    at async model.$__save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:398:16)
+    at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
+    at async D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2722:9
+    at async Promise.all (index 0)
+    at async Function.create (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:2707:11)
+2026-01-27 14:20:04 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-27 14:20:10 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
+2026-01-27 14:20:20 [error] : CustomAPIError: Your account has been deactivated. Please contact Admin. | POST /api/v1/auth/login
