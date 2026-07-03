@@ -45,12 +45,10 @@ const leadSchema = new mongoose.Schema(
 			enum: {
 				values: [
 					"new",
-					"contacted",
 					"interested",
 					"converted",
 					"sale",
-					"rejected",
-					"follow-up",
+					"not interested",
 					"paid",
 					"not pick",
 					"busy",

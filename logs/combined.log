@@ -765,3 +765,77 @@
 2026-01-27 14:20:04 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
 2026-01-27 14:20:10 [error] : CustomAPIError: Invalid Credentials | POST /api/v1/auth/login
 2026-01-27 14:20:20 [error] : CustomAPIError: Your account has been deactivated. Please contact Admin. | POST /api/v1/auth/login
+2026-02-15 15:38:10 [error] : CustomAPIError: No valid leads found in file | POST /api/v1/lead/bulk/upload-excel
+2026-07-03 13:39:34 [error] : CustomAPIError: No valid leads found in file | POST /api/v1/lead/bulk/upload-excel
+2026-07-03 14:25:53 [error] : not interested is not a supported status | PATCH /api/v1/lead/6a477ab96af38c43d9b10e83 | Stack: ValidationError: Validation failed: status: not interested is not a supported status
+    at updateValidators (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\helpers\updateValidators.js:186:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.Query.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4120:5)
+    at async model.Query._findOneAndUpdate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:3536:5)
+    at async model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4627:63)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:209:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-07-03 14:26:08 [error] : not interested is not a supported status | PATCH /api/v1/lead/6a477ab96af38c43d9b10e83 | Stack: ValidationError: Validation failed: status: not interested is not a supported status
+    at updateValidators (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\helpers\updateValidators.js:186:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.Query.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4120:5)
+    at async model.Query._findOneAndUpdate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:3536:5)
+    at async model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4627:63)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:209:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-07-03 14:27:47 [error] : not interested is not a supported status | PATCH /api/v1/lead/6a477ab96af38c43d9b10e83 | Stack: ValidationError: Validation failed: status: not interested is not a supported status
+    at updateValidators (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\helpers\updateValidators.js:186:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.Query.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4120:5)
+    at async model.Query._findOneAndUpdate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:3536:5)
+    at async model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4627:63)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:209:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-07-03 14:29:00 [error] : not interested is not a supported status | PATCH /api/v1/lead/6a477ab96af38c43d9b10e83 | Stack: ValidationError: Validation failed: status: not interested is not a supported status
+    at updateValidators (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\helpers\updateValidators.js:186:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.Query.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4120:5)
+    at async model.Query._findOneAndUpdate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:3536:5)
+    at async model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4627:63)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:209:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-07-03 14:30:18 [error] : not interested is not a supported status | PATCH /api/v1/lead/6a477ab96af38c43d9b10e83 | Stack: ValidationError: Validation failed: status: not interested is not a supported status
+    at updateValidators (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\helpers\updateValidators.js:186:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.Query.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4120:5)
+    at async model.Query._findOneAndUpdate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:3536:5)
+    at async model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4627:63)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:209:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-07-03 14:30:34 [error] : not interested is not a supported status | PATCH /api/v1/lead/6a477ab96af38c43d9b10e83 | Stack: ValidationError: Validation failed: status: not interested is not a supported status
+    at updateValidators (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\helpers\updateValidators.js:186:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.Query.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4120:5)
+    at async model.Query._findOneAndUpdate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:3536:5)
+    at async model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4627:63)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:209:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-07-03 14:31:43 [error] : not interested is not a supported status | PATCH /api/v1/lead/6a477ab96af38c43d9b10e83 | Stack: ValidationError: Validation failed: status: not interested is not a supported status
+    at updateValidators (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\helpers\updateValidators.js:186:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.Query.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4120:5)
+    at async model.Query._findOneAndUpdate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:3536:5)
+    at async model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4627:63)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:209:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-07-03 14:33:22 [error] : not interested is not a supported status | PATCH /api/v1/lead/6a477ab96af38c43d9b10e83 | Stack: ValidationError: Validation failed: status: not interested is not a supported status
+    at updateValidators (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\helpers\updateValidators.js:186:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.Query.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4120:5)
+    at async model.Query._findOneAndUpdate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:3536:5)
+    at async model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4627:63)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:209:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-07-03 14:37:27 [error] : not interested is not a supported status | PATCH /api/v1/lead/6a477ab96af38c43d9b10e83 | Stack: ValidationError: Validation failed: status: not interested is not a supported status
+    at updateValidators (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\helpers\updateValidators.js:186:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async model.Query.validate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4120:5)
+    at async model.Query._findOneAndUpdate (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:3536:5)
+    at async model.Query.exec (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\query.js:4627:63)
+    at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:209:18
+    at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
