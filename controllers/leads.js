@@ -5,8 +5,82 @@ const Sale = require("../models/Sale.js");
 const asyncWrapper = require("../middleware/async");
 const { BadRequestError, NotFoundError, UnauthenticatedError } = require("../errors");
 
-// 1. Get all leads (Admin Only)
+
+
+const RESET_AFTER_HOURS = 24;
+
+const resetExpiredLeadStatuses = async (assignedTo = null) => {
+    const now = new Date();
+
+    const twentyFourHoursAgo = new Date(
+        now.getTime() - RESET_AFTER_HOURS * 60 * 60 * 1000
+    );
+
+    const filter = {
+        $or: [
+            {
+                status: "not pick",
+                statusUpdatedAt: {
+                    $lte: twentyFourHoursAgo,
+                },
+            },
+
+            {
+                status: "busy",
+                statusUpdatedAt: {
+                    $lte: twentyFourHoursAgo,
+                },
+            },
+
+
+            {
+                status: "interested",
+                followUpDate: {
+                    $ne: null,
+                    $lte: now,
+                },
+            },
+
+
+            {
+                status: "interested",
+                $or: [
+                    { followUpDate: { $exists: false } },
+                    { followUpDate: null },
+                ],
+                statusUpdatedAt: {
+                    $lte: twentyFourHoursAgo,
+                },
+            },
+        ],
+    };
+
+    if (assignedTo) {
+        filter.assignedTo = assignedTo;
+    }
+
+    const result = await Lead.updateMany(
+        filter,
+        {
+            $set: {
+                status: "new",
+                statusUpdatedAt: now,
+                updatedAt: now,
+            },
+            $unset: {
+                followUpDate: "",
+            },
+        }
+    );
+
+    return result;
+};
+
+
 const getAllLeads = asyncWrapper(async (req, res) => {
+
+    await resetExpiredLeadStatuses();
+
     const leads = await Lead.find({})
         .populate("assignedTo", "name email role")
         .sort({ createdAt: -1 });
@@ -26,16 +100,30 @@ const getLeadsByCSR = asyncWrapper(async (req, res) => {
         throw new BadRequestError("Invalid CSR ID");
     }
 
+    // 24 hours purani temporary statuses ko "new" karo
+    await resetExpiredLeadStatuses(csrId);
+
     const leads = await Lead.find({ assignedTo: csrId })
         .populate("assignedTo", "name email role")
         .sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, count: leads.length, data: leads });
+    res.status(200).json({
+        success: true,
+        count: leads.length,
+        data: leads
+    });
 });
 
 // 3. Smart Get Leads (FIXED: Ab yeh Date Filters handle karega)
 const getLeads = asyncWrapper(async (req, res) => {
     const { search, filter, start, end } = req.query;
+
+    // 24 hours purani temporary statuses reset karo
+    if (req.user.role === "csr") {
+        await resetExpiredLeadStatuses(req.user.userId);
+    } else {
+        await resetExpiredLeadStatuses();
+    }
 
     let query = {};
 

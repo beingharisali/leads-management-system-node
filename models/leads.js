@@ -58,6 +58,11 @@ const leadSchema = new mongoose.Schema(
 			},
 			default: "new",
 		},
+
+		statusUpdatedAt: {
+			type: Date,
+			default: Date.now,
+		},
 		followUpDate: {
 			type: Date,
 		},
@@ -103,34 +108,56 @@ leadSchema.virtual("saleDetails", {
 // Save hook (Lead create karte waqt chalta hai)
 leadSchema.pre('save', async function () {
 	if (this.isModified('status')) {
-		const currentStatus = this.status ? this.status.toLowerCase() : '';
+		const currentStatus = this.status
+			? this.status.toLowerCase()
+			: '';
+
+		// Status change ka exact time save karo
+		this.statusUpdatedAt = new Date();
+
+		// Sale/Paid hone par conversion time save karo
 		if (currentStatus === 'sale' || currentStatus === 'paid') {
-			this.convertedAt = Date.now();
+			this.convertedAt = new Date();
 		}
 	}
-	// Async function mein next() ki zaroorat nahi hoti
 });
 
 // Update hook (PATCH request ke liye)
-// Humne 'next' hata diya hai aur 'async' add kiya hai taake error na aaye
 leadSchema.pre('findOneAndUpdate', async function () {
 	const update = this.getUpdate();
 
 	if (!update) return;
 
-	// Check if status is being updated
-	const newStatus = update.status || (update.$set && update.$set.status);
+	const newStatus =
+		update.status ||
+		(update.$set && update.$set.status);
 
 	if (newStatus) {
-		const normalizedStatus = newStatus.toLowerCase();
-		if (normalizedStatus === 'sale' || normalizedStatus === 'paid') {
-			// Hum directly query par set kar rahe hain
-			this.set({ convertedAt: Date.now() });
+		const normalizedStatus = newStatus
+			.toString()
+			.toLowerCase()
+			.trim();
+
+		// Har status change ka exact time
+		this.set({
+			statusUpdatedAt: new Date(),
+		});
+
+		// Paid/Sale ka conversion time
+		if (
+			normalizedStatus === 'sale' ||
+			normalizedStatus === 'paid'
+		) {
+			this.set({
+				convertedAt: new Date(),
+			});
 		}
 	}
 
-	// Updated at hamesha set hoga
-	this.set({ updatedAt: Date.now() });
+	// updatedAt manually update
+	this.set({
+		updatedAt: new Date(),
+	});
 });
 
 // Model Export
