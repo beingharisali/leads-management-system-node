@@ -3,14 +3,89 @@ const xlsx = require("xlsx");
 const Lead = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
 const asyncWrapper = require("../middleware/async");
-const { BadRequestError, NotFoundError } = require("../errors");
+const { BadRequestError, NotFoundError, UnauthenticatedError } = require("../errors");
+
+
+
+const RESET_AFTER_HOURS = 24;
+
+const resetExpiredLeadStatuses = async (assignedTo = null) => {
+    const now = new Date();
+
+    const twentyFourHoursAgo = new Date(
+        now.getTime() - RESET_AFTER_HOURS * 60 * 60 * 1000
+    );
+
+    const filter = {
+        $or: [
+            {
+                status: "not pick",
+                statusUpdatedAt: {
+                    $lte: twentyFourHoursAgo,
+                },
+            },
+
+            {
+                status: "busy",
+                statusUpdatedAt: {
+                    $lte: twentyFourHoursAgo,
+                },
+            },
+
+
+            {
+                status: "interested",
+                followUpDate: {
+                    $ne: null,
+                    $lte: now,
+                },
+            },
+
+
+            {
+                status: "interested",
+                $or: [
+                    { followUpDate: { $exists: false } },
+                    { followUpDate: null },
+                ],
+                statusUpdatedAt: {
+                    $lte: twentyFourHoursAgo,
+                },
+            },
+        ],
+    };
+
+    if (assignedTo) {
+        filter.assignedTo = assignedTo;
+    }
+
+    const result = await Lead.updateMany(
+        filter,
+        {
+            $set: {
+                status: "new",
+                statusUpdatedAt: now,
+                updatedAt: now,
+            },
+            $unset: {
+                followUpDate: "",
+            },
+        }
+    );
+
+    return result;
+};
+
 
 // ===============================
 // Pagination helper
-// Keeps every list endpoint bounded so a growing leads collection
-// never gets shipped to the client (and the DB) in a single response.
+// Opt-in: only kicks in when the caller passes page/limit, so every
+// existing call site that expects the full list back (dashboards doing
+// client-side aggregation/search) keeps getting the exact same response
+// shape. Callers that DO want a bounded page (list views) get one.
 // ===============================
 const getPagination = (query) => {
+    if (query.page === undefined && query.limit === undefined) return null;
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(query.limit, 10) || 20, 1), 100);
     const skip = (page - 1) * limit;
@@ -26,314 +101,270 @@ const buildPaginatedResponse = (data, totalCount, page, limit) => ({
     totalPages: Math.max(Math.ceil(totalCount / limit), 1),
 });
 
+// Runs a Lead.find(filter) query, applying pagination only if requested;
+// otherwise returns every match, same as before pagination existed.
+const findLeads = async (filter, pagination) => {
+    let query = Lead.find(filter)
+        .populate("assignedTo", "name email role")
+        .sort({ createdAt: -1 });
+
+    if (pagination) {
+        query = query.skip(pagination.skip).limit(pagination.limit);
+    }
+
+    const [leads, totalCount] = await Promise.all([
+        query,
+        Lead.countDocuments(filter),
+    ]);
+
+    return pagination
+        ? buildPaginatedResponse(leads, totalCount, pagination.page, pagination.limit)
+        : { success: true, count: leads.length, data: leads };
+};
+
 // ===============================
 // Get all leads (Admin Only)
 // ===============================
 const getAllLeads = asyncWrapper(async (req, res) => {
-    const { page, limit, skip } = getPagination(req.query);
+    await resetExpiredLeadStatuses();
 
-    const [leads, totalCount] = await Promise.all([
-        Lead.find({})
-            .populate("assignedTo", "name email role")
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit),
-        Lead.countDocuments({}),
-    ]);
-
-    res.status(200).json(buildPaginatedResponse(leads, totalCount, page, limit));
+    res.status(200).json(await findLeads({}, getPagination(req.query)));
 });
 
-// ===============================
-// Get leads by CSR (Admin view specific CSR)
-// ===============================
+// 2. Get leads by CSR (Used by Admin Sidebar)
 const getLeadsByCSR = asyncWrapper(async (req, res) => {
-    const csrId = req.user.role === "csr" ? req.user.userId : req.params.csrId;
+    const { csrId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(csrId)) {
         throw new BadRequestError("Invalid CSR ID");
     }
 
-    const { page, limit, skip } = getPagination(req.query);
-    const filter = { assignedTo: csrId };
+    // 24 hours purani temporary statuses ko "new" karo
+    await resetExpiredLeadStatuses(csrId);
 
-    const [leads, totalCount] = await Promise.all([
-        Lead.find(filter)
-            .populate("assignedTo", "name email role")
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit),
-        Lead.countDocuments(filter),
-    ]);
-
-    res.status(200).json(buildPaginatedResponse(leads, totalCount, page, limit));
+    res.status(200).json(await findLeads({ assignedTo: csrId }, getPagination(req.query)));
 });
 
-// ===============================
-// Get leads for logged-in CSR
-// ===============================
+// 3. Smart Get Leads (FIXED: Ab yeh Date Filters handle karega)
 const getLeads = asyncWrapper(async (req, res) => {
-    const { page, limit, skip } = getPagination(req.query);
-    const filter = { assignedTo: req.user.userId };
+    const { search, filter, start, end } = req.query;
 
-    const [leads, totalCount] = await Promise.all([
-        Lead.find(filter)
-            .populate("assignedTo", "name email role")
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit),
-        Lead.countDocuments(filter),
-    ]);
+    // 24 hours purani temporary statuses reset karo
+    if (req.user.role === "csr") {
+        await resetExpiredLeadStatuses(req.user.userId);
+    } else {
+        await resetExpiredLeadStatuses();
+    }
 
-    res.status(200).json(buildPaginatedResponse(leads, totalCount, page, limit));
+    let query = {};
+
+    // Role based filtering
+    if (req.user.role === "csr") {
+        query.assignedTo = req.user.userId;
+    }
+
+    // Search logic
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: "i" } },
+            { phone: { $regex: search, $options: "i" } },
+            { course: { $regex: search, $options: "i" } },
+            { city: { $regex: search, $options: "i" } }
+        ];
+    }
+
+    // Date Filtering Logic (Added to sync with Dashboard)
+    if (filter) {
+        const now = new Date();
+        if (filter === "day") {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            query.createdAt = { $gte: today };
+        } else if (filter === "week") {
+            const lastWeek = new Date();
+            lastWeek.setDate(now.getDate() - 7);
+            query.createdAt = { $gte: lastWeek };
+        } else if (filter === "month") {
+            const lastMonth = new Date();
+            lastMonth.setMonth(now.getMonth() - 1);
+            query.createdAt = { $gte: lastMonth };
+        } else if (filter === "custom" && start && end) {
+            query.createdAt = {
+                $gte: new Date(new Date(start).setHours(0, 0, 0, 0)),
+                $lte: new Date(new Date(end).setHours(23, 59, 59, 999))
+            };
+        }
+    }
+
+    res.status(200).json(await findLeads(query, getPagination(req.query)));
 });
 
-// ===============================
-// Get leads by date filter (Day/Week/Month)
-// CSR: always scoped to their own leads.
-// Admin: sees all leads, or a specific CSR's leads via ?csrId=
-// ===============================
+// 4. Get leads by date
 const getLeadsByDate = asyncWrapper(async (req, res) => {
     const { filter, csrId } = req.query;
     const now = new Date();
-    let startDate;
+    let startDate = new Date();
 
-    if (filter === "day") {
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    } else if (filter === "week") {
-        const day = now.getDay() || 7;
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - day + 1);
-        startDate.setHours(0, 0, 0, 0);
-    } else if (filter === "month") {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else {
-        throw new BadRequestError("Invalid filter. Use day, week, or month.");
-    }
+    if (filter === "day") startDate.setHours(0, 0, 0, 0);
+    else if (filter === "week") startDate.setDate(now.getDate() - 7);
+    else if (filter === "month") startDate.setMonth(now.getMonth() - 1);
+    else throw new BadRequestError("Invalid filter. Use day, week, or month.");
 
-    const match = { createdAt: { $gte: startDate } };
+    let query = { createdAt: { $gte: startDate } };
 
     if (req.user.role === "csr") {
-        match.assignedTo = req.user.userId;
+        query.assignedTo = req.user.userId;
     } else if (csrId) {
         if (!mongoose.Types.ObjectId.isValid(csrId)) {
             throw new BadRequestError("Invalid CSR ID");
         }
-        match.assignedTo = csrId;
+        query.assignedTo = csrId;
     }
 
-    const { page, limit, skip } = getPagination(req.query);
-
-    const [leads, totalCount] = await Promise.all([
-        Lead.find(match)
-            .populate("assignedTo", "name email role")
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit),
-        Lead.countDocuments(match),
-    ]);
-
-    res.status(200).json(buildPaginatedResponse(leads, totalCount, page, limit));
+    res.status(200).json(await findLeads(query, getPagination(req.query)));
 });
 
-// ===============================
-// Get single lead by ID
-// ===============================
-const getSingleLead = asyncWrapper(async (req, res) => {
-    const lead = await Lead.findById(req.params.id).populate("assignedTo", "name email role");
-    if (!lead) throw new NotFoundError("Lead not found");
-
-    if (req.user.role === "csr" && lead.assignedTo._id.toString() !== req.user.userId)
-        throw new BadRequestError("Access denied");
-
-    res.status(200).json({ success: true, data: lead });
-});
-
-// ===============================
-// Create Lead (Manual Entry)
-// ===============================
-const createLead = asyncWrapper(async (req, res) => {
-    const { name, phone, course, source, assignedTo: bodyAssignedTo } = req.body;
-    if (!name || !phone || !course) throw new BadRequestError("Name, phone, and course are required");
-
-    const assignedTo = req.user.role === "admin" ? bodyAssignedTo : req.user.userId;
-
-    if (!assignedTo || !mongoose.Types.ObjectId.isValid(assignedTo)) {
-        throw new BadRequestError("A valid CSR ID is required for assignment");
-    }
-
-    const lead = await Lead.create({
-        name: name.trim(),
-        phone: phone.trim(),
-        course: course.trim(),
-        source: source || "Manual",
-        assignedTo,
-        createdBy: req.user.userId,
-        status: "new",
-    });
-
-    const populatedLead = await lead.populate("assignedTo", "name email role");
-    res.status(201).json({ success: true, data: populatedLead });
-});
-
-// ===============================
-// UPDATE LEAD (FIXED & SECURE)
-// ===============================
-const updateLead = asyncWrapper(async (req, res) => {
-    const { id } = req.params;
-
-    // Check if lead exists
-    const lead = await Lead.findById(id);
-    if (!lead) throw new NotFoundError("Lead not found");
-
-    // Authorization check for CSR
-    if (req.user.role === "csr") {
-        if (lead.assignedTo.toString() !== req.user.userId) {
-            throw new BadRequestError("Unauthorized to edit this lead");
-        }
-        // CSR ko assignedTo change nahi karne dena
-        delete req.body.assignedTo;
-        delete req.body._id; // ID cannot be updated
-    }
-
-    // Use findByIdAndUpdate for better stability with populated fields
-    const updatedLead = await Lead.findByIdAndUpdate(
-        id,
-        { $set: req.body },
-        { new: true, runValidators: true }
-    ).populate("assignedTo", "name email role");
-
-    res.status(200).json({ success: true, data: updatedLead });
-});
-
-// ===============================
-// Delete Lead
-// ===============================
-const deleteLead = asyncWrapper(async (req, res) => {
-    const lead = await Lead.findById(req.params.id);
-    if (!lead) throw new NotFoundError("Lead not found");
-
-    if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId)
-        throw new BadRequestError("Unauthorized");
-
-    await lead.deleteOne();
-    res.status(200).json({ success: true, message: "Lead deleted successfully" });
-});
-
-// ===============================
-// Convert Lead to Sale (FIXED)
-// ===============================
+// 5. Convert Lead to Sale (Fixed: Transactions Removed for Local MongoDB)
 const convertLeadToSale = asyncWrapper(async (req, res) => {
-    const { amount } = req.body;
+    const { amount, remarks, paymentMethod } = req.body;
     const { id } = req.params;
 
-    if (!amount || isNaN(amount) || amount <= 0) {
-        throw new BadRequestError("A valid numeric amount greater than 0 is required");
-    }
+    if (!amount || amount <= 0) throw new BadRequestError("Valid amount is required");
 
     const lead = await Lead.findById(id);
     if (!lead) throw new NotFoundError("Lead not found");
 
-    // CSR Check
-    if (req.user.role === "csr" && lead.assignedTo.toString() !== req.user.userId) {
-        throw new BadRequestError("Unauthorized");
+    const normalizedStatus = lead.status.toLowerCase();
+    if (normalizedStatus === 'sale' || normalizedStatus === 'paid') {
+        throw new BadRequestError("Lead already converted");
     }
 
     const sale = await Sale.create({
         lead: lead._id,
         csr: lead.assignedTo,
         amount: Number(amount),
-        status: "completed",
+        course: lead.course,
+        remarks: remarks || "Direct conversion",
+        paymentMethod: paymentMethod || "Bank Transfer"
     });
 
-    // Update status using findOneAndUpdate to avoid populate errors during save()
-    const updatedLead = await Lead.findByIdAndUpdate(
-        id,
-        { status: "converted", saleAmount: Number(amount) },
-        { new: true }
-    );
+    const updatedLead = await Lead.findByIdAndUpdate(id, {
+        status: "paid",
+        saleAmount: Number(amount),
+        convertedAt: Date.now(),
+        lastUpdatedBy: req.user.userId
+    }, { new: true });
 
-    res.status(201).json({ success: true, data: sale });
+    res.status(201).json({
+        success: true,
+        message: "Sale record created successfully",
+        data: sale
+    });
 });
 
-// ===============================
-// Upload Leads (Array)
-// ===============================
-const uploadLeads = asyncWrapper(async (req, res) => {
-    const { leads, csrId } = req.body;
-    if (!leads || !Array.isArray(leads)) throw new BadRequestError("Invalid format");
-
-    const assignTo = req.user.role === "csr" ? req.user.userId : csrId;
-    if (!assignTo) throw new BadRequestError("CSR ID required");
-
-    const processed = leads.map(l => ({
-        name: String(l.name || l.Name || "").trim(),
-        phone: String(l.phone || l.Phone || "").trim().replace(/\s/g, ""),
-        course: String(l.course || l.Course || "N/A").trim(),
-        assignedTo: assignTo,
-        createdBy: req.user.userId,
-        status: "new",
-        source: "Excel Upload"
-    })).filter(l => l.name && l.phone);
-
-    try {
-        const inserted = await Lead.insertMany(processed, { ordered: false });
-        res.status(201).json({ success: true, count: inserted.length });
-    } catch (error) {
-        res.status(201).json({ success: true, count: error.result ? error.result.nInserted : 0 });
-    }
-});
-
-// ===============================
-// Bulk Insert Excel
-// ===============================
+// 6. Bulk Insert Excel
 const bulkInsertLeads = asyncWrapper(async (req, res) => {
     if (!req.file) throw new BadRequestError("No file uploaded");
-
     const { csrId } = req.body;
-
-    if (!csrId || !mongoose.Types.ObjectId.isValid(csrId)) {
-        throw new BadRequestError("Please select a valid CSR to assign these leads.");
-    }
+    if (!csrId) throw new BadRequestError("Please select a CSR to assign leads");
 
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    const jsonData = xlsx.utils.sheet_to_json(worksheet, { defval: "", raw: false });
+    const jsonData = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
-    const leadsToInsert = jsonData
-        .filter(row => (row.Name || row.name || row.NAME) && (row.Phone || row.phone || row.PHONE))
-        .map(row => ({
-            name: String(row.Name || row.name || row.NAME).trim(),
-            phone: String(row.Phone || row.phone || row.PHONE).trim().replace(/\s/g, ""),
-            course: String(row.Course || row.course || row.COURSE || "N/A").trim(),
-            source: "Bulk Excel Upload",
-            assignedTo: csrId,
-            createdBy: req.user.userId,
-            status: "new",
-        }));
+    const leadsToInsert = jsonData.map(row => ({
+        name: (row.Name || row.name || "Unknown").trim(),
+        phone: String(row.Phone || row.phone || "").replace(/[^\d+]/g, ""),
+        course: (row.Course || row.course || "General").trim(),
+        assignedTo: csrId,
+        createdBy: req.user.userId,
+        city: (row.City || row.city || "Unknown").trim(),
+        source: (row.Source || row.source || "excel").toLowerCase(),
+        status: "new"
+    })).filter(l => l.phone.length >= 10);
 
-    try {
-        const inserted = await Lead.insertMany(leadsToInsert, { ordered: false });
-        res.status(201).json({ success: true, count: inserted.length });
-    } catch (error) {
-        res.status(201).json({
-            success: true,
-            count: error.result ? error.result.nInserted : 0,
-            message: "Import finished with some entries skip or partial success"
-        });
-    }
+    if (leadsToInsert.length === 0) throw new BadRequestError("No valid leads found in file");
+
+    const result = await Lead.insertMany(leadsToInsert, { ordered: false });
+    res.status(201).json({ success: true, count: result.length });
+});
+
+// 7. Create Lead
+const createLead = asyncWrapper(async (req, res) => {
+    const { name, phone, course, assignedTo, status, remarks, city, source, followUpDate } = req.body;
+
+    const creatorId = req.user?.userId || req.user?.id;
+    if (!creatorId) throw new UnauthenticatedError("Session expired. Please login again.");
+
+    const cleanPhone = phone ? String(phone).replace(/[^\d+]/g, "") : "";
+
+    const leadData = {
+        name: name?.trim(),
+        phone: cleanPhone,
+        course: course || "General",
+        assignedTo: assignedTo,
+        createdBy: creatorId,
+        status: status?.toLowerCase() || "new",
+        remarks: remarks || "",
+        city: city || "Unknown",
+        source: source || "manual",
+        followUpDate: followUpDate || null
+    };
+
+    if (!leadData.name) throw new BadRequestError("Lead name is required");
+    if (leadData.phone.length < 10) throw new BadRequestError("Valid 10-digit phone number is required");
+    if (!leadData.assignedTo) throw new BadRequestError("Lead must be assigned to an agent");
+
+    const lead = await Lead.create(leadData);
+    res.status(201).json({ success: true, data: lead });
+});
+
+// 8. Update Lead
+const updateLead = asyncWrapper(async (req, res) => {
+    const updateData = { ...req.body };
+
+    if (updateData.status) updateData.status = updateData.status.toLowerCase();
+    if (updateData.phone) updateData.phone = String(updateData.phone).replace(/[^\d+]/g, "");
+
+    updateData.lastUpdatedBy = req.user.userId;
+
+    const lead = await Lead.findByIdAndUpdate(req.params.id, updateData, {
+        new: true,
+        runValidators: true
+    });
+
+    if (!lead) throw new NotFoundError("Lead not found");
+    res.status(200).json({ success: true, data: lead });
+});
+
+// 9. Delete Functions
+const deleteLead = asyncWrapper(async (req, res) => {
+    const lead = await Lead.findByIdAndDelete(req.params.id);
+    if (!lead) throw new NotFoundError("Lead not found");
+    res.status(200).json({ success: true, message: "Lead Deleted" });
+});
+
+const deleteAllLeads = asyncWrapper(async (req, res) => {
+    if (req.user.role !== "admin") throw new UnauthenticatedError("Only Admin can wipe database");
+    await Lead.deleteMany({});
+    res.status(200).json({ success: true, message: "Database Cleared" });
+});
+
+const getSingleLead = asyncWrapper(async (req, res) => {
+    const lead = await Lead.findById(req.params.id).populate("assignedTo", "name");
+    if (!lead) throw new NotFoundError("Lead not found");
+    res.status(200).json({ success: true, data: lead });
 });
 
 module.exports = {
     createLead,
     getLeads,
-    getLeadsByDate,
     getSingleLead,
     updateLead,
     deleteLead,
+    deleteAllLeads,
     convertLeadToSale,
     getAllLeads,
     getLeadsByCSR,
-    uploadLeads,
-    bulkInsertLeads,
+    getLeadsByDate,
+    bulkInsertLeads
 };

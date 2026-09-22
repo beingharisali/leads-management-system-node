@@ -9,14 +9,13 @@ const {
 	getSingleLead,
 	updateLead,
 	deleteLead,
+	deleteAllLeads,
 	getAllLeads,
 	convertLeadToSale,
 	getLeadsByCSR,
-	uploadLeads,
 	bulkInsertLeads,
 } = require("../controllers/leads");
 
-// Excel Controllers
 const {
 	parseExcelFile,
 	validateExcelData,
@@ -26,73 +25,36 @@ const {
 const { auth, authorizeRoles } = require("../middleware/authentication");
 const upload = require("../middleware/upload");
 
-// ================= Validators =================
-const {
-	createLeadValidator,
-	updateLeadValidator,
-	getLeadsByDateValidator,
-} = require("../middleware/leadValidator");
-const validateRequest = require("../middleware/validateRequest");
+/* =============================================================================
+   ROUTES CONFIGURATION
+============================================================================= */
 
-// ================= Shared Routes (Admin & CSR) ================
+// --- 1. ADMIN EXCLUSIVE ---
+router.get("/admin/all", auth, authorizeRoles("admin"), getAllLeads);
+router.get("/admin/csr-report/:csrId", auth, authorizeRoles("admin"), getLeadsByCSR);
+router.delete("/admin/delete-all", auth, authorizeRoles("admin"), deleteAllLeads);
 
-// Get leads assigned to CSR or specific CSR for Admin
-router.get("/csr/:csrId", auth, getLeadsByCSR);
-router.get("/get-leads", auth, getLeads);
+// --- 2. BULK & EXCEL OPERATIONS ---
+// Admin can upload, CSRs can only upload if you explicitly allow them
+router.post("/bulk/upload-excel", auth, authorizeRoles("admin", "csr"), upload.single("file"), bulkInsertLeads);
+router.post("/excel/parse", auth, authorizeRoles("admin"), upload.single("file"), parseExcelFile);
+router.post("/excel/validate", auth, authorizeRoles("admin"), upload.single("file"), validateExcelData);
 
-// Lead Management
-router.get("/get-leads-by-date", auth, getLeadsByDateValidator, validateRequest, getLeadsByDate);
-router.post("/create-leads", auth, authorizeRoles("csr", "admin"), createLeadValidator, validateRequest, createLead);
-router.get("/get-single-leads/:id", auth, getSingleLead);
-router.patch("/update-leads/:id", auth, authorizeRoles("csr", "admin"), updateLeadValidator, validateRequest, updateLead);
-router.delete("/delete-leads/:id", auth, authorizeRoles("csr", "admin"), deleteLead);
+// --- 3. DATA RETRIEVAL (Shared/Protected) ---
+router.get("/", auth, getLeads); // Main Dashboard fetch
+router.get("/by-date", auth, getLeadsByDate);
+router.get("/csr/:csrId", auth, getLeadsByCSR); // Admin checking specific CSR or CSR checking self
 
-// Sales Conversion
-router.post("/convert-to-sale/:id", auth, authorizeRoles("csr", "admin"), convertLeadToSale);
+// --- 4. LEAD LIFECYCLE (CRUD) ---
+router.post("/create", auth, authorizeRoles("admin", "csr"), createLead);
 
-// ================= Admin Only Routes =================
-router.get("/get-all-leads", auth, authorizeRoles("admin"), getAllLeads);
-router.get("/csr", auth, authorizeRoles("admin"), getLeadsByCSR);
+// ID Based Operations (Grouped for clarity)
+router.route("/:id")
+	.get(auth, getSingleLead)
+	.patch(auth, updateLead) // Removed specific role check to allow both CSR & Admin
+	.delete(auth, authorizeRoles("admin"), deleteLead); // Delete restricted to Admin
 
-// ================= Excel & Bulk Upload (Updated) =================
-
-/**
- * 1. Bulk Insert from File (Admin Dashboard)
- * FIXED: Added "csr" to authorizeRoles so that if an admin is acting as a CSR or 
- * vice versa, the request doesn't fail with 500/403.
- */
-router.post("/bulk-insert-excel",
-	auth,
-	authorizeRoles("admin", "csr"),
-	upload.single("file"),
-	bulkInsertLeads
-);
-
-/**
- * 2. Upload JSON Array (CSR Dashboard Preview)
- * FIXED: Uses the optimized uploadLeads controller function
- */
-router.post("/upload-excel-array",
-	auth,
-	authorizeRoles("csr", "admin"),
-	uploadLeads
-);
-
-/**
- * 3. General Excel Utils
- */
-router.post("/parse-excel",
-	auth,
-	authorizeRoles("admin"),
-	upload.single("file"),
-	parseExcelFile
-);
-
-router.post("/validate-excel",
-	auth,
-	authorizeRoles("admin"),
-	upload.single("file"),
-	validateExcelData
-);
+// --- 5. SPECIAL OPERATIONS ---
+router.post("/convert-to-sale/:id", auth, convertLeadToSale);
 
 module.exports = router;
