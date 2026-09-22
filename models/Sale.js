@@ -25,4 +25,9 @@ const saleSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+/* ===================== INDEXING ===================== */
+saleSchema.index({ csr: 1, createdAt: -1 });
+saleSchema.index({ lead: 1 });
+saleSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model("Sale", saleSchema);

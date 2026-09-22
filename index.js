@@ -4,6 +4,7 @@ require("express-async-errors");
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const compression = require("compression");
 
 // security
 const helmet = require("helmet");
@@ -41,6 +42,7 @@ app.use(
 // =======================
 // Global Middlewares
 // =======================
+app.use(compression());
 app.use(express.json());
 app.use(requestLogger);
 app.use(helmet());

@@ -6,14 +6,42 @@ const asyncWrapper = require("../middleware/async");
 const { BadRequestError, NotFoundError } = require("../errors");
 
 // ===============================
+// Pagination helper
+// Keeps every list endpoint bounded so a growing leads collection
+// never gets shipped to the client (and the DB) in a single response.
+// ===============================
+const getPagination = (query) => {
+    const page = Math.max(parseInt(query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 20, 1), 100);
+    const skip = (page - 1) * limit;
+    return { page, limit, skip };
+};
+
+const buildPaginatedResponse = (data, totalCount, page, limit) => ({
+    success: true,
+    data,
+    count: data.length,
+    totalCount,
+    page,
+    totalPages: Math.max(Math.ceil(totalCount / limit), 1),
+});
+
+// ===============================
 // Get all leads (Admin Only)
 // ===============================
 const getAllLeads = asyncWrapper(async (req, res) => {
-    const leads = await Lead.find({})
-        .populate("assignedTo", "name email role")
-        .sort({ createdAt: -1 });
+    const { page, limit, skip } = getPagination(req.query);
 
-    res.status(200).json({ success: true, data: leads, count: leads.length });
+    const [leads, totalCount] = await Promise.all([
+        Lead.find({})
+            .populate("assignedTo", "name email role")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+        Lead.countDocuments({}),
+    ]);
+
+    res.status(200).json(buildPaginatedResponse(leads, totalCount, page, limit));
 });
 
 // ===============================
@@ -26,29 +54,47 @@ const getLeadsByCSR = asyncWrapper(async (req, res) => {
         throw new BadRequestError("Invalid CSR ID");
     }
 
-    const leads = await Lead.find({ assignedTo: csrId })
-        .populate("assignedTo", "name email role")
-        .sort({ createdAt: -1 });
+    const { page, limit, skip } = getPagination(req.query);
+    const filter = { assignedTo: csrId };
 
-    res.status(200).json({ success: true, data: leads, count: leads.length });
+    const [leads, totalCount] = await Promise.all([
+        Lead.find(filter)
+            .populate("assignedTo", "name email role")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+        Lead.countDocuments(filter),
+    ]);
+
+    res.status(200).json(buildPaginatedResponse(leads, totalCount, page, limit));
 });
 
 // ===============================
 // Get leads for logged-in CSR
 // ===============================
 const getLeads = asyncWrapper(async (req, res) => {
-    const leads = await Lead.find({ assignedTo: req.user.userId })
-        .populate("assignedTo", "name email role")
-        .sort({ createdAt: -1 });
+    const { page, limit, skip } = getPagination(req.query);
+    const filter = { assignedTo: req.user.userId };
 
-    res.status(200).json({ success: true, data: leads, count: leads.length });
+    const [leads, totalCount] = await Promise.all([
+        Lead.find(filter)
+            .populate("assignedTo", "name email role")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+        Lead.countDocuments(filter),
+    ]);
+
+    res.status(200).json(buildPaginatedResponse(leads, totalCount, page, limit));
 });
 
 // ===============================
 // Get leads by date filter (Day/Week/Month)
+// CSR: always scoped to their own leads.
+// Admin: sees all leads, or a specific CSR's leads via ?csrId=
 // ===============================
 const getLeadsByDate = asyncWrapper(async (req, res) => {
-    const { filter } = req.query;
+    const { filter, csrId } = req.query;
     const now = new Date();
     let startDate;
 
@@ -65,12 +111,29 @@ const getLeadsByDate = asyncWrapper(async (req, res) => {
         throw new BadRequestError("Invalid filter. Use day, week, or month.");
     }
 
-    const leads = await Lead.find({
-        assignedTo: req.user.userId,
-        createdAt: { $gte: startDate },
-    }).populate("assignedTo", "name email role");
+    const match = { createdAt: { $gte: startDate } };
 
-    res.status(200).json({ success: true, data: leads, count: leads.length });
+    if (req.user.role === "csr") {
+        match.assignedTo = req.user.userId;
+    } else if (csrId) {
+        if (!mongoose.Types.ObjectId.isValid(csrId)) {
+            throw new BadRequestError("Invalid CSR ID");
+        }
+        match.assignedTo = csrId;
+    }
+
+    const { page, limit, skip } = getPagination(req.query);
+
+    const [leads, totalCount] = await Promise.all([
+        Lead.find(match)
+            .populate("assignedTo", "name email role")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+        Lead.countDocuments(match),
+    ]);
+
+    res.status(200).json(buildPaginatedResponse(leads, totalCount, page, limit));
 });
 
 // ===============================

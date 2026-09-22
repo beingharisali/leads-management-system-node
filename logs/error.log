@@ -444,3 +444,5 @@
     at async model.save (D:\Web Development Course\LMS\leads-management-system-node\node_modules\mongoose\lib\model.js:609:5)
     at async D:\Web Development Course\LMS\leads-management-system-node\controllers\leads.js:129:5
     at async D:\Web Development Course\LMS\leads-management-system-node\middleware\async.js:5:13
+2026-09-22 14:00:25 [error] : CustomAPIError: Lead not found | DELETE /api/v1/lead/delete-leads/000000000000000000000000
+2026-09-22 14:00:25 [error] : CustomAPIError: Invalid CSR ID | GET /api/v1/lead/get-leads-by-date?filter=month&csrId=not-an-id
