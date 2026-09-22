@@ -1,79 +1,28 @@
 const mongoose = require("mongoose");
 const xlsx = require("xlsx");
 const Lead = require("../models/leads.js");
+const { CLOSED_STATUSES, startOfDay } = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
 const asyncWrapper = require("../middleware/async");
 const { BadRequestError, NotFoundError, UnauthenticatedError } = require("../errors");
 
-
-
-const RESET_AFTER_HOURS = 24;
-
-const resetExpiredLeadStatuses = async (assignedTo = null) => {
-    const now = new Date();
-
-    const twentyFourHoursAgo = new Date(
-        now.getTime() - RESET_AFTER_HOURS * 60 * 60 * 1000
-    );
-
-    const filter = {
-        $or: [
-            {
-                status: "not pick",
-                statusUpdatedAt: {
-                    $lte: twentyFourHoursAgo,
-                },
-            },
-
-            {
-                status: "busy",
-                statusUpdatedAt: {
-                    $lte: twentyFourHoursAgo,
-                },
-            },
-
-
-            {
-                status: "interested",
-                followUpDate: {
-                    $ne: null,
-                    $lte: now,
-                },
-            },
-
-
-            {
-                status: "interested",
-                $or: [
-                    { followUpDate: { $exists: false } },
-                    { followUpDate: null },
-                ],
-                statusUpdatedAt: {
-                    $lte: twentyFourHoursAgo,
-                },
-            },
-        ],
-    };
-
-    if (assignedTo) {
-        filter.assignedTo = assignedTo;
+// Builds the end-of-window cutoff for the day/week/month "due" filters.
+// Every window is inclusive of anything already overdue (followUpDate in
+// the past), so a lead a CSR didn't get to never silently disappears - it
+// just keeps showing up until it's actually closed (Paid/Not Interested).
+const dueWindowEnd = (filter) => {
+    const end = startOfDay(new Date());
+    if (filter === "day") {
+        // no-op, end of today
+    } else if (filter === "week") {
+        end.setDate(end.getDate() + 6);
+    } else if (filter === "month") {
+        end.setDate(end.getDate() + 29);
+    } else {
+        return null;
     }
-
-    const result = await Lead.updateMany(
-        filter,
-        {
-            $set: {
-                status: "new",
-                statusUpdatedAt: now,
-                updatedAt: now,
-            },
-            $unset: {
-                followUpDate: "",
-            },
-        }
-    );
-
-    return result;
+    end.setHours(23, 59, 59, 999);
+    return end;
 };
 
 
@@ -126,8 +75,6 @@ const findLeads = async (filter, pagination) => {
 // Get all leads (Admin Only)
 // ===============================
 const getAllLeads = asyncWrapper(async (req, res) => {
-    await resetExpiredLeadStatuses();
-
     res.status(200).json(await findLeads({}, getPagination(req.query)));
 });
 
@@ -139,22 +86,12 @@ const getLeadsByCSR = asyncWrapper(async (req, res) => {
         throw new BadRequestError("Invalid CSR ID");
     }
 
-    // 24 hours purani temporary statuses ko "new" karo
-    await resetExpiredLeadStatuses(csrId);
-
     res.status(200).json(await findLeads({ assignedTo: csrId }, getPagination(req.query)));
 });
 
 // 3. Smart Get Leads (FIXED: Ab yeh Date Filters handle karega)
 const getLeads = asyncWrapper(async (req, res) => {
     const { search, filter, start, end } = req.query;
-
-    // 24 hours purani temporary statuses reset karo
-    if (req.user.role === "csr") {
-        await resetExpiredLeadStatuses(req.user.userId);
-    } else {
-        await resetExpiredLeadStatuses();
-    }
 
     let query = {};
 
@@ -173,44 +110,32 @@ const getLeads = asyncWrapper(async (req, res) => {
         ];
     }
 
-    // Date Filtering Logic (Added to sync with Dashboard)
-    if (filter) {
-        const now = new Date();
-        if (filter === "day") {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            query.createdAt = { $gte: today };
-        } else if (filter === "week") {
-            const lastWeek = new Date();
-            lastWeek.setDate(now.getDate() - 7);
-            query.createdAt = { $gte: lastWeek };
-        } else if (filter === "month") {
-            const lastMonth = new Date();
-            lastMonth.setMonth(now.getMonth() - 1);
-            query.createdAt = { $gte: lastMonth };
-        } else if (filter === "custom" && start && end) {
-            query.createdAt = {
-                $gte: new Date(new Date(start).setHours(0, 0, 0, 0)),
-                $lte: new Date(new Date(end).setHours(23, 59, 59, 999))
-            };
-        }
+    // Date Filtering Logic - based on followUpDate (when the lead is next
+    // due), not createdAt. Closed leads (Paid/Not Interested) have no
+    // followUpDate so they naturally drop out of these windows. Every
+    // window includes anything overdue so a lead never silently vanishes.
+    if (filter === "custom" && start && end) {
+        query.followUpDate = {
+            $ne: null,
+            $gte: new Date(new Date(start).setHours(0, 0, 0, 0)),
+            $lte: new Date(new Date(end).setHours(23, 59, 59, 999))
+        };
+    } else if (filter && filter !== "all") {
+        const end = dueWindowEnd(filter);
+        if (end) query.followUpDate = { $ne: null, $lte: end };
     }
 
     res.status(200).json(await findLeads(query, getPagination(req.query)));
 });
 
-// 4. Get leads by date
+// 4. Get leads by date (due today/this week/this month, based on followUpDate)
 const getLeadsByDate = asyncWrapper(async (req, res) => {
     const { filter, csrId } = req.query;
-    const now = new Date();
-    let startDate = new Date();
 
-    if (filter === "day") startDate.setHours(0, 0, 0, 0);
-    else if (filter === "week") startDate.setDate(now.getDate() - 7);
-    else if (filter === "month") startDate.setMonth(now.getMonth() - 1);
-    else throw new BadRequestError("Invalid filter. Use day, week, or month.");
+    const end = dueWindowEnd(filter);
+    if (!end) throw new BadRequestError("Invalid filter. Use day, week, or month.");
 
-    let query = { createdAt: { $gte: startDate } };
+    let query = { followUpDate: { $ne: null, $lte: end } };
 
     if (req.user.role === "csr") {
         query.assignedTo = req.user.userId;
@@ -279,7 +204,10 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
         createdBy: req.user.userId,
         city: (row.City || row.city || "Unknown").trim(),
         source: (row.Source || row.source || "excel").toLowerCase(),
-        status: "new"
+        status: "new",
+        // insertMany() skips the save hook that normally schedules this,
+        // so set it explicitly - new leads should be due today.
+        followUpDate: startOfDay(new Date())
     })).filter(l => l.phone.length >= 10);
 
     if (leadsToInsert.length === 0) throw new BadRequestError("No valid leads found in file");
@@ -296,6 +224,7 @@ const createLead = asyncWrapper(async (req, res) => {
     if (!creatorId) throw new UnauthenticatedError("Session expired. Please login again.");
 
     const cleanPhone = phone ? String(phone).replace(/[^\d+]/g, "") : "";
+    const normalizedStatus = status?.toLowerCase() || "new";
 
     const leadData = {
         name: name?.trim(),
@@ -303,12 +232,19 @@ const createLead = asyncWrapper(async (req, res) => {
         course: course || "General",
         assignedTo: assignedTo,
         createdBy: creatorId,
-        status: status?.toLowerCase() || "new",
+        status: normalizedStatus,
         remarks: remarks || "",
         city: city || "Unknown",
         source: source || "manual",
-        followUpDate: followUpDate || null
     };
+
+    // A brand-new open lead should show up in "today" immediately; a
+    // caller-supplied date (or a closed status) takes precedence.
+    if (followUpDate) {
+        leadData.followUpDate = followUpDate;
+    } else if (!CLOSED_STATUSES.includes(normalizedStatus)) {
+        leadData.followUpDate = startOfDay(new Date());
+    }
 
     if (!leadData.name) throw new BadRequestError("Lead name is required");
     if (leadData.phone.length < 10) throw new BadRequestError("Valid 10-digit phone number is required");

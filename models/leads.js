@@ -103,6 +103,23 @@ leadSchema.virtual("saleDetails", {
 	justOne: true,
 });
 
+/* ===================== FOLLOW-UP SCHEDULING ===================== */
+// Statuses that close a lead out: once here, it no longer needs a follow-up
+// date and stops showing up in the day/week/month "due" filters.
+const CLOSED_STATUSES = ['paid', 'sale', 'not interested', 'converted'];
+
+const startOfDay = (date) => {
+	const d = new Date(date);
+	d.setHours(0, 0, 0, 0);
+	return d;
+};
+
+const tomorrowStart = () => {
+	const d = startOfDay(new Date());
+	d.setDate(d.getDate() + 1);
+	return d;
+};
+
 /* ===================== MIDDLEWARE ===================== */
 
 // Save hook (Lead create karte waqt chalta hai)
@@ -128,11 +145,12 @@ leadSchema.pre('findOneAndUpdate', async function () {
 
 	if (!update) return;
 
-	const newStatus =
-		update.status ||
-		(update.$set && update.$set.status);
+	const setBlock = update.$set || update;
+	const hasStatusKey = Object.prototype.hasOwnProperty.call(setBlock, 'status');
+	const hasFollowUpKey = Object.prototype.hasOwnProperty.call(setBlock, 'followUpDate');
+	const newStatus = setBlock.status;
 
-	if (newStatus) {
+	if (hasStatusKey && newStatus) {
 		const normalizedStatus = newStatus
 			.toString()
 			.toLowerCase()
@@ -152,6 +170,18 @@ leadSchema.pre('findOneAndUpdate', async function () {
 				convertedAt: new Date(),
 			});
 		}
+
+		// Follow-up scheduling: Paid/Not Interested close the lead out (no
+		// more follow-up needed). Any other status, unless the caller sent
+		// an explicit followUpDate, automatically rolls the lead to
+		// tomorrow so it reappears in the CSR's "today" filter next day.
+		if (!hasFollowUpKey) {
+			if (CLOSED_STATUSES.includes(normalizedStatus)) {
+				this.set({ followUpDate: null });
+			} else {
+				this.set({ followUpDate: tomorrowStart() });
+			}
+		}
 	}
 
 	// updatedAt manually update
@@ -163,3 +193,5 @@ leadSchema.pre('findOneAndUpdate', async function () {
 // Model Export
 const Leads = mongoose.models.Leads || mongoose.model("Leads", leadSchema);
 module.exports = Leads;
+module.exports.CLOSED_STATUSES = CLOSED_STATUSES;
+module.exports.startOfDay = startOfDay;
