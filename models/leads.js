@@ -105,8 +105,12 @@ leadSchema.virtual("saleDetails", {
 
 /* ===================== FOLLOW-UP SCHEDULING ===================== */
 // Statuses that close a lead out: once here, it no longer needs a follow-up
-// date and stops showing up in the day/week/month "due" filters.
-const CLOSED_STATUSES = ['paid', 'sale', 'not interested', 'converted'];
+// date and stops showing up in the agent's working views.
+const CLOSED_STATUSES = ['paid', 'sale', 'not interested', 'converted', 'wrong number'];
+
+// The only statuses an agent may pin a specific follow-up date on. Any
+// other open status (e.g. "new") just gets the automatic scheduling.
+const FOLLOW_UP_STATUSES = ['not pick', 'interested', 'busy'];
 
 const startOfDay = (date) => {
 	const d = new Date(date);
@@ -171,16 +175,15 @@ leadSchema.pre('findOneAndUpdate', async function () {
 			});
 		}
 
-		// Follow-up scheduling: Paid/Not Interested close the lead out (no
-		// more follow-up needed). Any other status, unless the caller sent
-		// an explicit followUpDate, automatically rolls the lead to
-		// tomorrow so it reappears in the CSR's "today" filter next day.
-		if (!hasFollowUpKey) {
-			if (CLOSED_STATUSES.includes(normalizedStatus)) {
-				this.set({ followUpDate: null });
-			} else {
-				this.set({ followUpDate: tomorrowStart() });
-			}
+		// Follow-up scheduling: closed statuses (Paid/Not Interested/Wrong
+		// Number) always clear the date - even if the caller sent one. Any
+		// other status, unless the caller sent an explicit followUpDate,
+		// automatically rolls the lead to tomorrow so it reappears in the
+		// CSR's "today" filter next day.
+		if (CLOSED_STATUSES.includes(normalizedStatus)) {
+			this.set({ followUpDate: null });
+		} else if (!hasFollowUpKey) {
+			this.set({ followUpDate: tomorrowStart() });
 		}
 	}
 
@@ -194,4 +197,5 @@ leadSchema.pre('findOneAndUpdate', async function () {
 const Leads = mongoose.models.Leads || mongoose.model("Leads", leadSchema);
 module.exports = Leads;
 module.exports.CLOSED_STATUSES = CLOSED_STATUSES;
+module.exports.FOLLOW_UP_STATUSES = FOLLOW_UP_STATUSES;
 module.exports.startOfDay = startOfDay;

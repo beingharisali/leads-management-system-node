@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const xlsx = require("xlsx");
 const Lead = require("../models/leads.js");
-const { CLOSED_STATUSES, startOfDay } = require("../models/leads.js");
+const { CLOSED_STATUSES, FOLLOW_UP_STATUSES, startOfDay } = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
 const asyncWrapper = require("../middleware/async");
 const { BadRequestError, NotFoundError, UnauthenticatedError } = require("../errors");
@@ -238,9 +238,13 @@ const createLead = asyncWrapper(async (req, res) => {
         source: source || "manual",
     };
 
-    // A brand-new open lead should show up in "today" immediately; a
-    // caller-supplied date (or a closed status) takes precedence.
+    // A brand-new open lead should show up in "today" immediately. A
+    // caller-supplied date is only honoured for Not Pick/Interested/Busy,
+    // and closed statuses never get one.
     if (followUpDate) {
+        if (!FOLLOW_UP_STATUSES.includes(normalizedStatus)) {
+            throw new BadRequestError("Follow-up date can only be set when status is Not Pick, Interested or Busy");
+        }
         leadData.followUpDate = followUpDate;
     } else if (!CLOSED_STATUSES.includes(normalizedStatus)) {
         leadData.followUpDate = startOfDay(new Date());
@@ -262,6 +266,29 @@ const updateLead = asyncWrapper(async (req, res) => {
     if (updateData.phone) updateData.phone = String(updateData.phone).replace(/[^\d+]/g, "");
 
     updateData.lastUpdatedBy = req.user.userId;
+
+    const existing = await Lead.findById(req.params.id).select("status");
+    if (!existing) throw new NotFoundError("Lead not found");
+    const currentStatus = (existing.status || "").toLowerCase();
+
+    // A closed lead (Paid/Not Interested/Wrong Number) stays closed for
+    // the agent - only an admin can reopen it.
+    if (
+        req.user.role === "csr" &&
+        CLOSED_STATUSES.includes(currentStatus) &&
+        updateData.status &&
+        updateData.status !== currentStatus
+    ) {
+        throw new BadRequestError("This lead is closed and its status can no longer be changed");
+    }
+
+    // Follow-up dates are only allowed on Not Pick/Interested/Busy leads.
+    if (updateData.followUpDate) {
+        const effectiveStatus = updateData.status || currentStatus;
+        if (!FOLLOW_UP_STATUSES.includes(effectiveStatus)) {
+            throw new BadRequestError("Follow-up date can only be set when status is Not Pick, Interested or Busy");
+        }
+    }
 
     const lead = await Lead.findByIdAndUpdate(req.params.id, updateData, {
         new: true,
