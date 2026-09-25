@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const asyncWrapper = require("../middleware/async");
 const { BadRequestError, UnauthenticatedError, NotFoundError } = require("../errors");
 const mongoose = require("mongoose");
+const { recordLogin } = require("./activity");
 
 // ================= JWT HELPER =================
 const createJWT = (user) => {
@@ -94,6 +95,7 @@ const login = asyncWrapper(async (req, res) => {
     throw new UnauthenticatedError("Invalid Credentials");
   }
   const token = createJWT(user);
+  if (user.role === "csr") await recordLogin(user._id);
   res.status(StatusCodes.OK).json({
     success: true,
     token,

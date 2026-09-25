@@ -16,6 +16,7 @@ const leadRoutes = require("./routes/leads");
 const saleRoutes = require("./routes/saleRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const activityRoutes = require("./routes/activityRoutes");
 const setupAdminRouter = require("./routes/setupAdmin");
 
 // middlewares
@@ -58,6 +59,7 @@ app.use("/api/v1/lead", leadRoutes);
 app.use("/api/v1/sale", saleRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/reports", reportRoutes);
+app.use("/api/v1/activity", activityRoutes);
 
 // Health Check Route (Just to check if server is alive)
 app.get("/health", (req, res) => res.status(200).send("Server is healthy"));
