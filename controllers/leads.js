@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const xlsx = require("xlsx");
 const Lead = require("../models/leads.js");
-const { CLOSED_STATUSES, FOLLOW_UP_STATUSES, startOfDay } = require("../models/leads.js");
+const { CLOSED_STATUSES, FOLLOW_UP_STATUSES, AUTO_ROLLOVER_STATUSES, startOfDay, tomorrowStart } = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
 const asyncWrapper = require("../middleware/async");
 const { BadRequestError, NotFoundError, UnauthenticatedError } = require("../errors");
@@ -196,14 +196,22 @@ const bulkInsertLeads = asyncWrapper(async (req, res) => {
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
     const jsonData = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
+    // Column headers are matched case/space-insensitively, so "Course",
+    // "course" and " COURSE " in the sheet all map to the same field.
+    const cell = (row, header) => {
+        const key = Object.keys(row).find(k => k.trim().toLowerCase() === header);
+        const value = key !== undefined ? String(row[key]).trim() : "";
+        return value || undefined;
+    };
+
     const leadsToInsert = jsonData.map(row => ({
-        name: (row.Name || row.name || "Unknown").trim(),
-        phone: String(row.Phone || row.phone || "").replace(/[^\d+]/g, ""),
-        course: (row.Course || row.course || "General").trim(),
+        name: cell(row, "name") || "Unknown",
+        phone: String(cell(row, "phone") || "").replace(/[^\d+]/g, ""),
+        course: cell(row, "course") || "General",
         assignedTo: csrId,
         createdBy: req.user.userId,
-        city: (row.City || row.city || "Unknown").trim(),
-        source: (row.Source || row.source || "excel").toLowerCase(),
+        city: cell(row, "city") || "Unknown",
+        source: (cell(row, "source") || "excel").toLowerCase(),
         status: "new",
         // insertMany() skips the save hook that normally schedules this,
         // so set it explicitly - new leads should be due today.
@@ -238,12 +246,14 @@ const createLead = asyncWrapper(async (req, res) => {
         source: source || "manual",
     };
 
-    // A brand-new open lead should show up in "today" immediately. A
-    // caller-supplied date is only honoured for Not Pick/Interested/Busy,
-    // and closed statuses never get one.
-    if (followUpDate) {
+    // A brand-new open lead should show up in "today" immediately. Not
+    // Pick/Busy go straight to tomorrow, a caller-supplied date is only
+    // honoured for Interested, and closed statuses never get one.
+    if (AUTO_ROLLOVER_STATUSES.includes(normalizedStatus)) {
+        leadData.followUpDate = tomorrowStart();
+    } else if (followUpDate) {
         if (!FOLLOW_UP_STATUSES.includes(normalizedStatus)) {
-            throw new BadRequestError("Follow-up date can only be set when status is Not Pick, Interested or Busy");
+            throw new BadRequestError("Follow-up date can only be set when status is Interested");
         }
         leadData.followUpDate = followUpDate;
     } else if (!CLOSED_STATUSES.includes(normalizedStatus)) {
@@ -282,11 +292,15 @@ const updateLead = asyncWrapper(async (req, res) => {
         throw new BadRequestError("This lead is closed and its status can no longer be changed");
     }
 
-    // Follow-up dates are only allowed on Not Pick/Interested/Busy leads.
+    // Follow-up dates can only be picked for Interested leads. Not Pick/Busy
+    // are rolled to tomorrow by the model's update hook, so a date sent
+    // alongside that status change is simply dropped.
     if (updateData.followUpDate) {
         const effectiveStatus = updateData.status || currentStatus;
-        if (!FOLLOW_UP_STATUSES.includes(effectiveStatus)) {
-            throw new BadRequestError("Follow-up date can only be set when status is Not Pick, Interested or Busy");
+        if (AUTO_ROLLOVER_STATUSES.includes(effectiveStatus) && updateData.status) {
+            delete updateData.followUpDate;
+        } else if (!FOLLOW_UP_STATUSES.includes(effectiveStatus)) {
+            throw new BadRequestError("Follow-up date can only be set when status is Interested");
         }
     }
 

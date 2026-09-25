@@ -110,7 +110,11 @@ const CLOSED_STATUSES = ['paid', 'sale', 'not interested', 'converted', 'wrong n
 
 // The only statuses an agent may pin a specific follow-up date on. Any
 // other open status (e.g. "new") just gets the automatic scheduling.
-const FOLLOW_UP_STATUSES = ['not pick', 'interested', 'busy'];
+const FOLLOW_UP_STATUSES = ['interested'];
+
+// No-answer statuses: the lead is always pushed to the next day so the
+// agent simply retries it tomorrow - a caller-supplied date is ignored.
+const AUTO_ROLLOVER_STATUSES = ['not pick', 'busy'];
 
 const startOfDay = (date) => {
 	const d = new Date(date);
@@ -176,13 +180,13 @@ leadSchema.pre('findOneAndUpdate', async function () {
 		}
 
 		// Follow-up scheduling: closed statuses (Paid/Not Interested/Wrong
-		// Number) always clear the date - even if the caller sent one. Any
-		// other status, unless the caller sent an explicit followUpDate,
-		// automatically rolls the lead to tomorrow so it reappears in the
-		// CSR's "today" filter next day.
+		// Number) always clear the date - even if the caller sent one. Not
+		// Pick/Busy always roll to tomorrow. Any other status, unless the
+		// caller sent an explicit followUpDate, also rolls to tomorrow so it
+		// reappears in the CSR's "today" filter next day.
 		if (CLOSED_STATUSES.includes(normalizedStatus)) {
 			this.set({ followUpDate: null });
-		} else if (!hasFollowUpKey) {
+		} else if (AUTO_ROLLOVER_STATUSES.includes(normalizedStatus) || !hasFollowUpKey) {
 			this.set({ followUpDate: tomorrowStart() });
 		}
 	}
@@ -198,4 +202,6 @@ const Leads = mongoose.models.Leads || mongoose.model("Leads", leadSchema);
 module.exports = Leads;
 module.exports.CLOSED_STATUSES = CLOSED_STATUSES;
 module.exports.FOLLOW_UP_STATUSES = FOLLOW_UP_STATUSES;
+module.exports.AUTO_ROLLOVER_STATUSES = AUTO_ROLLOVER_STATUSES;
+module.exports.tomorrowStart = tomorrowStart;
 module.exports.startOfDay = startOfDay;
