@@ -80,25 +80,43 @@ const recordLogin = async (userId) => {
 };
 
 // ===============================
-// Admin: a CSR's portal time - today plus the last N days
+// Admin: a CSR's portal time - today plus either one calendar month
+// (?month=YYYY-MM, every day of it up to today) or the last N days
 // ===============================
 const getCsrActivity = asyncWrapper(async (req, res) => {
 	const { csrId } = req.params;
 	if (!mongoose.Types.ObjectId.isValid(csrId)) throw new BadRequestError("Invalid CSR ID");
 
-	const days = Math.min(Math.max(parseInt(req.query.days, 10) || 7, 1), 31);
 	const now = new Date();
-
+	const todayKey = dayKey(now);
 	const dayKeys = [];
-	for (let i = 0; i < days; i++) {
-		const d = new Date(now);
-		d.setDate(d.getDate() - i);
-		dayKeys.push(dayKey(d));
+
+	if (req.query.month) {
+		const match = /^(\d{4})-(\d{2})$/.exec(req.query.month);
+		const year = match && Number(match[1]);
+		const monthIndex = match && Number(match[2]) - 1;
+		if (!match || monthIndex < 0 || monthIndex > 11) throw new BadRequestError("month must be YYYY-MM");
+
+		// Every calendar day - weekends included, CSRs work all 7 days -
+		// stopping at today for the current month
+		const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+		for (let d = 1; d <= daysInMonth; d++) {
+			const key = dayKey(new Date(year, monthIndex, d));
+			if (key > todayKey) break;
+			dayKeys.push(key);
+		}
+	} else {
+		const days = Math.min(Math.max(parseInt(req.query.days, 10) || 7, 1), 31);
+		for (let i = 0; i < days; i++) {
+			const d = new Date(now);
+			d.setDate(d.getDate() - i);
+			dayKeys.push(dayKey(d));
+		}
 	}
 
-	const records = await Activity.find({ user: csrId, day: { $in: dayKeys } }).lean();
+	const records = await Activity.find({ user: csrId, day: { $in: [...dayKeys, todayKey] } }).lean();
 	const byDay = Object.fromEntries(records.map(r => [r.day, r]));
-	const today = byDay[dayKeys[0]];
+	const today = byDay[todayKey];
 
 	// Latest ping across any day, for "last seen" even if not active today
 	const lastRecord = await Activity.findOne({ user: csrId, lastSeenAt: { $ne: null } })
@@ -116,7 +134,7 @@ const getCsrActivity = asyncWrapper(async (req, res) => {
 			lastSeenAt,
 			onlineWindowSeconds: ONLINE_WINDOW_SECONDS,
 			today: {
-				day: dayKeys[0],
+				day: todayKey,
 				activeSeconds: today?.activeSeconds || 0,
 				firstSeenAt: today?.firstSeenAt || null,
 				lastLoginAt: today?.lastLoginAt || null,
