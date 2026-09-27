@@ -145,6 +145,33 @@ const getCsrActivity = asyncWrapper(async (req, res) => {
 });
 
 // ===============================
+// CSR: their own portal time for today only (same shape as the admin
+// endpoint, with no history) - drives the timer on the CSR dashboard
+// ===============================
+const getMyActivity = asyncWrapper(async (req, res) => {
+	const now = new Date();
+	const day = dayKey(now);
+	const today = await Activity.findOne({ user: req.user.userId, day }).lean();
+
+	res.status(200).json({
+		success: true,
+		data: {
+			serverTime: now,
+			isOnline: isOnlineRecord(today, now),
+			lastSeenAt: today?.lastSeenAt || null,
+			onlineWindowSeconds: ONLINE_WINDOW_SECONDS,
+			today: {
+				day,
+				activeSeconds: today?.activeSeconds || 0,
+				firstSeenAt: today?.firstSeenAt || null,
+				lastLoginAt: today?.lastLoginAt || null,
+			},
+			history: [],
+		},
+	});
+});
+
+// ===============================
 // Admin: online status + today's portal time for every CSR at once
 // (drives the presence line in the admin sidebar)
 // ===============================
@@ -177,4 +204,4 @@ const getAllCsrPresence = asyncWrapper(async (req, res) => {
 	});
 });
 
-module.exports = { heartbeat, recordLogin, getCsrActivity, getAllCsrPresence };
+module.exports = { heartbeat, recordLogin, getCsrActivity, getMyActivity, getAllCsrPresence };
