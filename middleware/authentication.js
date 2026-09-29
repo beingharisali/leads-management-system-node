@@ -14,7 +14,7 @@ const auth = async (req, res, next) => {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return res.status(401).json({
             success: false,
-            msg: "Access Denied: No token provided",
+            msg: "You are not logged in. Please log in to continue.",
         });
     }
 
@@ -28,7 +28,7 @@ const auth = async (req, res, next) => {
         if (!payload.role || !payload.userId) {
             return res.status(401).json({
                 success: false,
-                msg: "Invalid token structure: Missing role or ID",
+                msg: "Your session is invalid. Please log in again.",
             });
         }
 
@@ -43,9 +43,8 @@ const auth = async (req, res, next) => {
         next();
     } catch (error) {
         // 5. Specific Error Handling
-        let message = "Authentication failed";
-        if (error.name === "TokenExpiredError") message = "Session expired. Please login again.";
-        if (error.name === "JsonWebTokenError") message = "Invalid token. Security alert!";
+        let message = "Your session is invalid. Please log in again.";
+        if (error.name === "TokenExpiredError") message = "Your session has expired. Please log in again.";
 
         return res.status(401).json({
             success: false,
@@ -66,7 +65,7 @@ const authorizeRoles = (...roles) => {
         if (!req.user) {
             return res.status(401).json({
                 success: false,
-                msg: "Authorization failed: User info not found",
+                msg: "You are not logged in. Please log in to continue.",
             });
         }
 
@@ -75,7 +74,7 @@ const authorizeRoles = (...roles) => {
             console.warn(`SECURITY ALERT: User ${req.user.email} tried to access an Admin route.`);
             return res.status(403).json({
                 success: false,
-                msg: `Forbidden: Your role (${req.user.role}) does not have permission.`,
+                msg: "You do not have permission to perform this action.",
             });
         }
 

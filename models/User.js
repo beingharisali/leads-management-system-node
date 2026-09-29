@@ -41,6 +41,18 @@ const UserSchema = new mongoose.Schema({
 		type: String,
 		enum: ["active", "inactive"],
 		default: "active"
+	},
+	// CSR's own mobile number
+	personalPhone: {
+		type: String,
+		trim: true,
+		default: ""
+	},
+	// Company number currently allotted to this CSR (admin can reassign)
+	officialPhone: {
+		type: String,
+		trim: true,
+		default: ""
 	}
 }, { timestamps: true }); // Timestamps add karne se analytics behtar hoti hai
 

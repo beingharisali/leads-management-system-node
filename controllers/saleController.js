@@ -1,7 +1,7 @@
 const Lead = require("../models/leads");
 const Sale = require("../models/Sale");
 const asyncWrapper = require("../middleware/async"); // use asyncWrapper for consistency
-const { BadRequestError, NotFoundError, UnauthenticatedError } = require("../errors");
+const { BadRequestError, NotFoundError, UnauthenticatedError, ForbiddenError } = require("../errors");
 
 // =======================
 // Task-19: Convert Lead to Sale
@@ -20,7 +20,7 @@ const convertLeadToSale = asyncWrapper(async (req, res) => {
 
     // CSR can only convert their own leads; Admin can convert any lead
     if (req.user.role === "csr" && assignedToStr !== userIdStr) {
-        throw new UnauthenticatedError("You cannot convert leads not assigned to you");
+        throw new ForbiddenError("You can only convert leads that are assigned to you.");
     }
 
     const sale = await Sale.create({
@@ -47,7 +47,7 @@ const getSalesByCSR = asyncWrapper(async (req, res) => {
     const { csrId } = req.params;
 
     if (req.user.role === "csr" && req.user.userId.toString() !== csrId.toString()) {
-        throw new UnauthenticatedError("Access denied");
+        throw new ForbiddenError("You do not have permission to view these sales.");
     }
 
     const page = parseInt(req.query.page) || 1;
@@ -108,7 +108,7 @@ const getSalesByDate = asyncWrapper(async (req, res) => {
 // Task-22: Admin - Get all sales (with pagination)
 // =======================
 const getAllSales = asyncWrapper(async (req, res) => {
-    if (req.user.role !== "admin") throw new UnauthenticatedError("Admin only");
+    if (req.user.role !== "admin") throw new ForbiddenError("Only an admin can perform this action.");
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -135,7 +135,7 @@ const getAllSales = asyncWrapper(async (req, res) => {
 // Task-23: Admin - Get sales by CSR (with pagination)
 // =======================
 const adminGetSalesByCSR = asyncWrapper(async (req, res) => {
-    if (req.user.role !== "admin") throw new UnauthenticatedError("Admin only");
+    if (req.user.role !== "admin") throw new ForbiddenError("Only an admin can perform this action.");
 
     const { csrId } = req.params;
     const page = parseInt(req.query.page) || 1;

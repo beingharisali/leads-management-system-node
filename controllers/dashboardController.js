@@ -87,7 +87,7 @@ exports.getCsrDashboardStats = async (req, res) => {
         console.error("CSR Dashboard Error:", error);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
             success: false,
-            msg: error.message,
+            msg: "Could not load dashboard data. Please try again.",
         });
     }
 };
@@ -182,7 +182,7 @@ exports.getAdminDashboardStats = async (req, res) => {
         console.error("Admin Dashboard Error:", error);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
             success: false,
-            msg: error.message,
+            msg: "Could not load dashboard data. Please try again.",
         });
     }
 };
@@ -224,7 +224,7 @@ exports.getCsrPerformanceComparison = async (req, res) => {
         console.error("CSR Performance Comparison Error:", error);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
             success: false,
-            msg: error.message,
+            msg: "Could not load dashboard data. Please try again.",
         });
     }
 };

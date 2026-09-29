@@ -2,7 +2,7 @@ const User = require("../models/User");
 const { StatusCodes } = require("http-status-codes");
 const jwt = require("jsonwebtoken");
 const asyncWrapper = require("../middleware/async");
-const { BadRequestError, UnauthenticatedError, NotFoundError } = require("../errors");
+const { BadRequestError, UnauthenticatedError, NotFoundError, ForbiddenError } = require("../errors");
 const mongoose = require("mongoose");
 const { recordLogin } = require("./activity");
 
@@ -50,15 +50,20 @@ const firstAdminSignup = asyncWrapper(async (req, res) => {
 // ================= REGISTER (ADMIN ONLY) =================
 const register = asyncWrapper(async (req, res) => {
   if (req.user.role !== "admin") {
-    throw new UnauthenticatedError("Only admin can create users");
+    throw new ForbiddenError("Only an admin can create agents.");
   }
-  const { name, email, password, role = "csr" } = req.body;
+  const { name, email, password, role = "csr", personalPhone, officialPhone } = req.body;
   if (!name || !email || !password) {
-    throw new BadRequestError("Please provide all values");
+    throw new BadRequestError("Name, email and password are required.");
+  }
+  if (role.toLowerCase() === "csr" && (!personalPhone?.trim() || !officialPhone?.trim())) {
+    throw new BadRequestError("Personal number and official/allotted number are required.");
   }
   const emailExists = await User.findOne({ email: email.toLowerCase() });
   if (emailExists) {
-    throw new BadRequestError("Email already in use");
+    throw new BadRequestError(
+      `An account with the email "${email.toLowerCase()}" already exists (${emailExists.name}). Please use a different email.`
+    );
   }
   const user = await User.create({
     name,
@@ -66,6 +71,8 @@ const register = asyncWrapper(async (req, res) => {
     password,
     role: role.toLowerCase(),
     status: "active",
+    personalPhone: personalPhone?.trim() || "",
+    officialPhone: officialPhone?.trim() || "",
   });
   res.status(StatusCodes.CREATED).json({
     success: true,
@@ -78,11 +85,11 @@ const register = asyncWrapper(async (req, res) => {
 const login = asyncWrapper(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    throw new BadRequestError("Please provide email and password");
+    throw new BadRequestError("Please enter your email and password.");
   }
   const user = await User.findOne({ email: email.toLowerCase() });
   if (!user) {
-    throw new UnauthenticatedError("Invalid Credentials");
+    throw new UnauthenticatedError("Incorrect email or password.");
   }
 
   // Strict Block for deactivated CSRs
@@ -92,7 +99,7 @@ const login = asyncWrapper(async (req, res) => {
 
   const isMatch = await user.comparePassword(password);
   if (!isMatch) {
-    throw new UnauthenticatedError("Invalid Credentials");
+    throw new UnauthenticatedError("Incorrect email or password.");
   }
   const token = createJWT(user);
   if (user.role === "csr") await recordLogin(user._id);
@@ -116,12 +123,12 @@ const updateStatus = asyncWrapper(async (req, res) => {
   const targetStatus = status?.toLowerCase().trim();
   if (!["active", "inactive"].includes(targetStatus)) {
     console.log(`[!] REJECTED: Invalid Status: ${status}`);
-    throw new BadRequestError("Invalid status. Expected 'active' or 'inactive'");
+    throw new BadRequestError("Invalid status. It must be either 'active' or 'inactive'.");
   }
 
   // 2. Security Check
   if (req.user.role !== "admin") {
-    throw new UnauthenticatedError("Access Denied: Admin only.");
+    throw new ForbiddenError("Only an admin can change an agent's status.");
   }
 
   // 3. Smart ID Mapping (Handles MongoDB ID or Custom CSR ID)
@@ -159,7 +166,7 @@ const updateStatus = asyncWrapper(async (req, res) => {
 // ================= GET CURRENT USER (ME) =================
 const getSingleUser = asyncWrapper(async (req, res) => {
   const user = await User.findById(req.user.userId).select("-password");
-  if (!user) throw new UnauthenticatedError("User not found");
+  if (!user) throw new UnauthenticatedError("Your account no longer exists. Please log in again.");
 
   res.status(StatusCodes.OK).json({
     success: true,
@@ -182,11 +189,11 @@ const getAllCSRs = asyncWrapper(async (req, res) => {
 const updateUser = asyncWrapper(async (req, res) => {
   const { name, email, password } = req.body;
   const user = await User.findById(req.user.userId);
-  if (!user) throw new UnauthenticatedError("User not found");
+  if (!user) throw new UnauthenticatedError("Your account no longer exists. Please log in again.");
 
   if (email && email.toLowerCase() !== user.email) {
     const emailExists = await User.findOne({ email: email.toLowerCase() });
-    if (emailExists) throw new BadRequestError("Email already in use");
+    if (emailExists) throw new BadRequestError(`The email "${email.toLowerCase()}" is already used by another account.`);
     user.email = email.toLowerCase();
   }
   if (name) user.name = name;
@@ -199,7 +206,42 @@ const updateUser = asyncWrapper(async (req, res) => {
   });
 });
 
+// ================= GET ONE CSR (ADMIN ONLY) =================
+const getAgent = asyncWrapper(async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new NotFoundError(`Agent with ID ${id} not found.`);
+  const user = await User.findOne({ _id: id, role: "csr" }).select("-password");
+  if (!user) throw new NotFoundError(`Agent with ID ${id} not found.`);
+  res.status(StatusCodes.OK).json({ success: true, data: user });
+});
+
+// ================= UPDATE CSR PHONE NUMBERS (ADMIN ONLY) =================
+const updateAgentPhones = asyncWrapper(async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new NotFoundError(`Agent with ID ${id} not found.`);
+
+  const update = {};
+  for (const field of ["personalPhone", "officialPhone"]) {
+    if (req.body[field] === undefined) continue;
+    const value = String(req.body[field]).trim();
+    if (!value) throw new BadRequestError("Number cannot be empty");
+    update[field] = value;
+  }
+  if (!Object.keys(update).length) throw new BadRequestError("No number was provided to update.");
+
+  const user = await User.findOneAndUpdate(
+    { _id: id, role: "csr" },
+    { $set: update },
+    { new: true, runValidators: true }
+  ).select("-password");
+  if (!user) throw new NotFoundError(`Agent with ID ${id} not found.`);
+
+  res.status(StatusCodes.OK).json({ success: true, data: user });
+});
+
 module.exports = {
+  getAgent,
+  updateAgentPhones,
   firstAdminSignup,
   register,
   login,

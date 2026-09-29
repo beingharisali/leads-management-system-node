@@ -35,7 +35,9 @@ const fileFilter = (req, file, cb) => {
          * Ye wahi error message hai jo aapko frontend par mil raha tha.
          * Isse update karne se validation aur mazboot ho jayegi.
          */
-        cb(new Error("Only Excel files are allowed!"), false);
+        const err = new Error("Only Excel (.xlsx, .xls) or CSV files are allowed.");
+        err.isUploadError = true; // error-handler turns this into a 400
+        cb(err, false);
     }
 };
 

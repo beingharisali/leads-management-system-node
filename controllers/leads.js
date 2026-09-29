@@ -4,7 +4,7 @@ const Lead = require("../models/leads.js");
 const { CLOSED_STATUSES, FOLLOW_UP_STATUSES, AUTO_ROLLOVER_STATUSES, startOfDay, tomorrowStart } = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
 const asyncWrapper = require("../middleware/async");
-const { BadRequestError, NotFoundError, UnauthenticatedError } = require("../errors");
+const { BadRequestError, NotFoundError, UnauthenticatedError, ForbiddenError } = require("../errors");
 
 // Builds the end-of-window cutoff for the day/week/month "due" filters.
 // Every window is inclusive of anything already overdue (followUpDate in
@@ -261,7 +261,7 @@ const createLead = asyncWrapper(async (req, res) => {
     }
 
     if (!leadData.name) throw new BadRequestError("Lead name is required");
-    if (leadData.phone.length < 10) throw new BadRequestError("Valid 10-digit phone number is required");
+    if (leadData.phone.replace(/\D/g, "").length < 10) throw new BadRequestError("Please enter a valid phone number (at least 10 digits).");
     if (!leadData.assignedTo) throw new BadRequestError("Lead must be assigned to an agent");
 
     const lead = await Lead.create(leadData);
@@ -321,7 +321,7 @@ const deleteLead = asyncWrapper(async (req, res) => {
 });
 
 const deleteAllLeads = asyncWrapper(async (req, res) => {
-    if (req.user.role !== "admin") throw new UnauthenticatedError("Only Admin can wipe database");
+    if (req.user.role !== "admin") throw new ForbiddenError("Only an admin can delete all leads.");
     await Lead.deleteMany({});
     res.status(200).json({ success: true, message: "Database Cleared" });
 });

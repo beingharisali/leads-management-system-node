@@ -1,7 +1,7 @@
 const Lead = require("../models/leads");
 const Sale = require("../models/Sale");
 const asyncWrapper = require("../middleware/async"); // centralized error handling
-const { UnauthenticatedError } = require("../errors");
+const { BadRequestError } = require("../errors");
 
 // ================= Leads Grouped =================
 const getLeadsGrouped = asyncWrapper(async (req, res) => {
@@ -21,7 +21,7 @@ const getLeadsGrouped = asyncWrapper(async (req, res) => {
     } else if (type === "month") {
         groupId = { $month: "$createdAt" };
     } else {
-        throw new UnauthenticatedError("Invalid type parameter");
+        throw new BadRequestError("Invalid report type. Use day, week or month.");
     }
 
     const data = await Lead.aggregate([
@@ -55,7 +55,7 @@ const getSalesGrouped = asyncWrapper(async (req, res) => {
     } else if (type === "month") {
         groupId = { $month: "$createdAt" };
     } else {
-        throw new UnauthenticatedError("Invalid type parameter");
+        throw new BadRequestError("Invalid report type. Use day, week or month.");
     }
 
     const data = await Sale.aggregate([

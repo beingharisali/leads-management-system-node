@@ -8,7 +8,9 @@ const {
     updateUser,
     updateStatus,
     getAllCSRs,
-    getSingleUser
+    getSingleUser,
+    getAgent,
+    updateAgentPhones
 } = require('../controllers/auth');
 
 // Middleware: 'auth' for token verification, 'authorizeRoles' for Admin-only access
@@ -59,6 +61,20 @@ router.put('/update-status/:id',
     auth,
     authorizeRoles('admin'),
     asyncWrapper(updateStatus)
+);
+
+// 4. Single CSR profile (incl. personal / allotted numbers)
+router.get('/agent/:id',
+    auth,
+    authorizeRoles('admin'),
+    asyncWrapper(getAgent)
+);
+
+// 5. Change a CSR's personal / allotted number
+router.patch('/agent/:id/phones',
+    auth,
+    authorizeRoles('admin'),
+    asyncWrapper(updateAgentPhones)
 );
 
 module.exports = router;
