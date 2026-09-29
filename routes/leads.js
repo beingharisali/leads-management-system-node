@@ -14,6 +14,7 @@ const {
 	convertLeadToSale,
 	getLeadsByCSR,
 	bulkInsertLeads,
+	getUrgentLeads,
 } = require("../controllers/leads");
 
 const {
@@ -43,6 +44,7 @@ router.post("/excel/validate", auth, authorizeRoles("admin"), upload.single("fil
 // --- 3. DATA RETRIEVAL (Shared/Protected) ---
 router.get("/", auth, getLeads); // Main Dashboard fetch
 router.get("/by-date", auth, getLeadsByDate);
+router.get("/urgent", auth, getUrgentLeads); // must stay above "/:id"
 router.get("/csr/:csrId", auth, getLeadsByCSR); // Admin checking specific CSR or CSR checking self
 
 // --- 4. LEAD LIFECYCLE (CRUD) ---

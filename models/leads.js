@@ -44,6 +44,7 @@ const leadSchema = new mongoose.Schema(
 			trim: true,
 			enum: {
 				values: [
+					"urgent",
 					"new",
 					"interested",
 					"converted",
@@ -62,6 +63,12 @@ const leadSchema = new mongoose.Schema(
 		statusUpdatedAt: {
 			type: Date,
 			default: Date.now,
+		},
+		// Mirrors status === "urgent" (kept in sync by the hooks below) so
+		// every lead list can pin urgent leads first with a plain index sort.
+		isUrgent: {
+			type: Boolean,
+			default: false,
 		},
 		followUpDate: {
 			type: Date,
@@ -94,6 +101,7 @@ const leadSchema = new mongoose.Schema(
 leadSchema.index({ name: 'text', phone: 'text' });
 leadSchema.index({ assignedTo: 1, status: 1 });
 leadSchema.index({ createdAt: -1 });
+leadSchema.index({ assignedTo: 1, isUrgent: -1, createdAt: -1 });
 
 /* ===================== VIRTUALS ===================== */
 leadSchema.virtual("saleDetails", {
@@ -115,6 +123,9 @@ const FOLLOW_UP_STATUSES = ['interested'];
 // No-answer statuses: the lead is always pushed to the next day so the
 // agent simply retries it tomorrow - a caller-supplied date is ignored.
 const AUTO_ROLLOVER_STATUSES = ['not pick', 'busy'];
+
+// Pinned to the top of every lead list and due immediately (today).
+const URGENT_STATUS = 'urgent';
 
 const startOfDay = (date) => {
 	const d = new Date(date);
@@ -139,6 +150,7 @@ leadSchema.pre('save', async function () {
 
 		// Status change ka exact time save karo
 		this.statusUpdatedAt = new Date();
+		this.isUrgent = currentStatus === URGENT_STATUS;
 
 		// Sale/Paid hone par conversion time save karo
 		if (currentStatus === 'sale' || currentStatus === 'paid') {
@@ -167,6 +179,7 @@ leadSchema.pre('findOneAndUpdate', async function () {
 		// Har status change ka exact time
 		this.set({
 			statusUpdatedAt: new Date(),
+			isUrgent: normalizedStatus === URGENT_STATUS,
 		});
 
 		// Paid/Sale ka conversion time
@@ -186,6 +199,9 @@ leadSchema.pre('findOneAndUpdate', async function () {
 		// reappears in the CSR's "today" filter next day.
 		if (CLOSED_STATUSES.includes(normalizedStatus)) {
 			this.set({ followUpDate: null });
+		} else if (normalizedStatus === URGENT_STATUS) {
+			// Urgent = call now: due today, whatever date was sent
+			this.set({ followUpDate: startOfDay(new Date()) });
 		} else if (AUTO_ROLLOVER_STATUSES.includes(normalizedStatus) || !hasFollowUpKey) {
 			this.set({ followUpDate: tomorrowStart() });
 		}

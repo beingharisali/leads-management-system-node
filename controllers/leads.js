@@ -55,7 +55,7 @@ const buildPaginatedResponse = (data, totalCount, page, limit) => ({
 const findLeads = async (filter, pagination) => {
     let query = Lead.find(filter)
         .populate("assignedTo", "name email role")
-        .sort({ createdAt: -1 });
+        .sort({ isUrgent: -1, createdAt: -1 }); // urgent leads pinned first
 
     if (pagination) {
         query = query.skip(pagination.skip).limit(pagination.limit);
@@ -87,6 +87,29 @@ const getLeadsByCSR = asyncWrapper(async (req, res) => {
     }
 
     res.status(200).json(await findLeads({ assignedTo: csrId }, getPagination(req.query)));
+});
+
+// Urgent leads only (small payload - polled by the CSR portal to raise
+// "call these now" alerts). CSRs always get their own; an admin passes
+// ?csrId= to see one agent's, or gets every urgent lead without it.
+const getUrgentLeads = asyncWrapper(async (req, res) => {
+    const filter = { status: "urgent" };
+
+    if (req.user.role === "csr") {
+        filter.assignedTo = req.user.userId;
+    } else if (req.query.csrId) {
+        if (!mongoose.Types.ObjectId.isValid(req.query.csrId)) {
+            throw new BadRequestError("Invalid CSR ID");
+        }
+        filter.assignedTo = req.query.csrId;
+    }
+
+    const leads = await Lead.find(filter)
+        .select("name phone course city remarks status statusUpdatedAt assignedTo createdAt")
+        .sort({ statusUpdatedAt: -1 })
+        .lean();
+
+    res.status(200).json({ success: true, count: leads.length, data: leads });
 });
 
 // 3. Smart Get Leads (FIXED: Ab yeh Date Filters handle karega)
@@ -333,6 +356,7 @@ const getSingleLead = asyncWrapper(async (req, res) => {
 });
 
 module.exports = {
+    getUrgentLeads,
     createLead,
     getLeads,
     getSingleLead,
