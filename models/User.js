@@ -53,6 +53,15 @@ const UserSchema = new mongoose.Schema({
 		type: String,
 		trim: true,
 		default: ""
+	},
+	// Code in this CSR's public admission form link (/admission/<code>).
+	// Generated the first time they open their link (controllers/admission.js).
+	admissionCode: {
+		type: String,
+		trim: true,
+		lowercase: true,
+		unique: true,
+		sparse: true
 	}
 }, { timestamps: true }); // Timestamps add karne se analytics behtar hoti hai
 

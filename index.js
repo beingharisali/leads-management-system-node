@@ -18,6 +18,9 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const activityRoutes = require("./routes/activityRoutes");
 const setupAdminRouter = require("./routes/setupAdmin");
+const admissionRoutes = require("./routes/admissionRoutes");
+
+const { startAdmissionSyncLoop } = require("./utils/lmsClient");
 
 // middlewares
 const notFoundMiddleware = require("./middleware/not-found");
@@ -28,6 +31,9 @@ const requestLogger = require("./middleware/requestLogger");
 // =======================
 // 🔥 SECURITY & CORS
 // =======================
+// Real client IP behind the hosting proxy (rate limits on the public form)
+app.set("trust proxy", 1);
+
 // Helmet helps secure Express apps by setting various HTTP headers
 app.use(helmet());
 app.use(xss());
@@ -60,6 +66,7 @@ app.use("/api/v1/sale", saleRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/reports", reportRoutes);
 app.use("/api/v1/activity", activityRoutes);
+app.use("/api/v1/admission", admissionRoutes);
 
 // Health Check Route (Just to check if server is alive)
 app.get("/health", (req, res) => res.status(200).send("Server is healthy"));
@@ -73,12 +80,13 @@ app.use(errorHandlerMiddleware);
 // =======================
 // Start Server
 // =======================
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5001;
 
 const start = async () => {
 	try {
 		await connectDB(process.env.MONGO_URI);
 		console.log("🚀 Database Connected Successfully");
+		startAdmissionSyncLoop();
 		app.listen(port, () =>
 			console.log(`✨ Server is blazing on port ${port}`)
 		);
