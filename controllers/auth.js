@@ -176,7 +176,7 @@ const getSingleUser = asyncWrapper(async (req, res) => {
 
 // ================= GET ALL CSRs (ADMIN ONLY) =================
 const getAllCSRs = asyncWrapper(async (req, res) => {
-  const csrs = await User.find({ role: "csr" }).select("-password").sort({ name: 1 });
+  const csrs = await User.find({ role: "csr" }).select("-password").sort({ name: 1 }).lean();
 
   res.status(StatusCodes.OK).json({
     success: true,

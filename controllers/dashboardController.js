@@ -137,7 +137,7 @@ exports.getAdminDashboardStats = async (req, res) => {
                 { $group: { _id: null, total: { $sum: "$amount" } } },
             ]),
             Sale.aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }]),
-            User.find({ role: "csr" }).sort({ name: 1 }),
+            User.find({ role: "csr" }).select("name").sort({ name: 1 }).lean(),
             // One grouped query for ALL CSRs instead of a countDocuments per CSR.
             Lead.aggregate([{ $group: { _id: "$assignedTo", count: { $sum: 1 } } }]),
             Sale.aggregate([{ $group: { _id: "$csr", count: { $sum: 1 } } }]),
@@ -191,7 +191,7 @@ exports.getAdminDashboardStats = async (req, res) => {
 exports.getCsrPerformanceComparison = async (req, res) => {
     try {
         const [csrs, leadsByCsrAgg, salesByCsrAgg] = await Promise.all([
-            User.find({ role: "csr" }).sort({ name: 1 }),
+            User.find({ role: "csr" }).select("name email").sort({ name: 1 }).lean(),
             Lead.aggregate([{ $group: { _id: "$assignedTo", count: { $sum: 1 } } }]),
             Sale.aggregate([{ $group: { _id: "$csr", count: { $sum: 1 } } }]),
         ]);

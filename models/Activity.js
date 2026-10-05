@@ -31,6 +31,10 @@ const activitySchema = new mongoose.Schema(
 );
 
 activitySchema.index({ user: 1, day: 1 }, { unique: true });
+// Each CSR's latest ping (admin presence sidebar + agent page, polled every 10s)
+activitySchema.index({ user: 1, lastSeenAt: -1 });
+// Everyone's record for today
+activitySchema.index({ day: 1 });
 
 const dayKey = (date = new Date()) => {
 	const d = new Date(date);
