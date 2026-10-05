@@ -114,15 +114,16 @@ const getCsrActivity = asyncWrapper(async (req, res) => {
 		}
 	}
 
-	const records = await Activity.find({ user: csrId, day: { $in: [...dayKeys, todayKey] } }).lean();
+	const [records, lastRecord] = await Promise.all([
+		Activity.find({ user: csrId, day: { $in: [...dayKeys, todayKey] } }).lean(),
+		// Latest ping across any day, for "last seen" even if not active today
+		Activity.findOne({ user: csrId, lastSeenAt: { $ne: null } })
+			.sort({ lastSeenAt: -1 })
+			.select("lastSeenAt isActive")
+			.lean(),
+	]);
 	const byDay = Object.fromEntries(records.map(r => [r.day, r]));
 	const today = byDay[todayKey];
-
-	// Latest ping across any day, for "last seen" even if not active today
-	const lastRecord = await Activity.findOne({ user: csrId, lastSeenAt: { $ne: null } })
-		.sort({ lastSeenAt: -1 })
-		.select("lastSeenAt isActive")
-		.lean();
 	const lastSeenAt = lastRecord?.lastSeenAt || null;
 	const isOnline = isOnlineRecord(lastRecord, now);
 
@@ -182,7 +183,9 @@ const getAllCsrPresence = asyncWrapper(async (req, res) => {
 		// Each CSR's most recent ping, whatever day it was on
 		Activity.aggregate([
 			{ $match: { lastSeenAt: { $ne: null } } },
-			{ $sort: { lastSeenAt: -1 } },
+			// Matches the { user, lastSeenAt } index, so this walks the index
+			// instead of sorting every activity record in memory
+			{ $sort: { user: 1, lastSeenAt: -1 } },
 			{ $group: { _id: "$user", lastSeenAt: { $first: "$lastSeenAt" }, isActive: { $first: "$isActive" } } },
 		]),
 		Activity.find({ day: dayKey(now) }).select("user activeSeconds").lean(),

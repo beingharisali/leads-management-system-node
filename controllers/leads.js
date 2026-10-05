@@ -50,32 +50,133 @@ const buildPaginatedResponse = (data, totalCount, page, limit) => ({
     totalPages: Math.max(Math.ceil(totalCount / limit), 1),
 });
 
+// lean() skips Mongoose's schema defaults, so older leads saved before a
+// field existed (e.g. isUrgent) would come back without it. Fill them in
+// the same way a full document would.
+const LEAD_DEFAULTS = Object.entries(Lead.schema.paths)
+    .filter(([path, type]) => path !== "_id" && type.defaultValue !== undefined)
+    .map(([path, type]) => [path, type.defaultValue]);
+
+const withDefaults = (leads) => {
+    for (const lead of leads) {
+        for (const [path, value] of LEAD_DEFAULTS) {
+            if (lead[path] === undefined) lead[path] = typeof value === "function" ? value() : value;
+        }
+    }
+    return leads;
+};
+
 // Runs a Lead.find(filter) query, applying pagination only if requested;
 // otherwise returns every match, same as before pagination existed.
+// lean(): plain objects instead of full Mongoose documents - much faster
+// to build and serialise for large lists (no client reads the `id` virtual).
 const findLeads = async (filter, pagination) => {
     let query = Lead.find(filter)
         .populate("assignedTo", "name email role")
-        .sort({ isUrgent: -1, createdAt: -1 }); // urgent leads pinned first
+        .lean();
 
-    if (pagination) {
-        query = query.skip(pagination.skip).limit(pagination.limit);
+    if (!pagination) {
+        // The full list's length is the total - no separate count query
+        const leads = withDefaults(await query.sort({ isUrgent: -1, createdAt: -1 })); // urgent leads pinned first
+        return { success: true, count: leads.length, data: leads };
     }
+
+    // _id breaks ties between leads with the same createdAt (an Excel import
+    // saves a whole batch in the same millisecond) so no lead shows up on
+    // two pages or is skipped between them. Ascending _id = the order they
+    // were saved in, same as the full list returns ties.
+    query = query
+        .sort({ isUrgent: -1, createdAt: -1, _id: 1 })
+        .skip(pagination.skip)
+        .limit(pagination.limit);
 
     const [leads, totalCount] = await Promise.all([
         query,
         Lead.countDocuments(filter),
     ]);
 
-    return pagination
-        ? buildPaginatedResponse(leads, totalCount, pagination.page, pagination.limit)
-        : { success: true, count: leads.length, data: leads };
+    return buildPaginatedResponse(withDefaults(leads), totalCount, pagination.page, pagination.limit);
 };
+
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // ===============================
 // Get all leads (Admin Only)
+// Optional filters for the admin dashboard's lead table:
+//   csrId  - only this agent's leads
+//   search - name contains it (any case) or phone contains it
+//   status - exact status (any case)
 // ===============================
 const getAllLeads = asyncWrapper(async (req, res) => {
-    res.status(200).json(await findLeads({}, getPagination(req.query)));
+    const { csrId, search, status } = req.query;
+    const conditions = [];
+
+    if (csrId) {
+        if (!mongoose.Types.ObjectId.isValid(csrId)) throw new BadRequestError("Invalid CSR ID");
+        conditions.push({ assignedTo: csrId });
+    }
+    if (search) {
+        const pattern = escapeRegex(String(search));
+        conditions.push({
+            $or: [
+                { name: { $regex: pattern, $options: "i" } },
+                { phone: { $regex: pattern } },
+            ],
+        });
+    }
+    if (status && status !== "all") {
+        const wanted = String(status).toLowerCase();
+        // Any case, like the dashboard always compared; a lead with no
+        // status is shown as "new", so it matches "new" too
+        const byStatus = { status: { $regex: `^${escapeRegex(wanted)}$`, $options: "i" } };
+        conditions.push(wanted === "new"
+            ? { $or: [byStatus, { status: { $in: [null, ""] } }] }
+            : byStatus);
+    }
+
+    const filter = conditions.length ? { $and: conditions } : {};
+    res.status(200).json(await findLeads(filter, getPagination(req.query)));
+});
+
+// ===============================
+// Admin dashboard summary cards: how many leads were created in a date
+// window, broken down by status (with the sale amounts per status).
+//   from / to - ISO timestamps, both optional (no bound when missing)
+// A lead with no status counts as "new", same as the lead list shows it.
+// ===============================
+const getAdminLeadSummary = asyncWrapper(async (req, res) => {
+    const createdAt = { $ne: null };
+    for (const [param, op] of [["from", "$gte"], ["to", "$lte"]]) {
+        if (!req.query[param]) continue;
+        const date = new Date(req.query[param]);
+        if (Number.isNaN(date.getTime())) throw new BadRequestError(`Invalid '${param}' date`);
+        createdAt[op] = date;
+    }
+
+    const rows = await Lead.aggregate([
+        { $match: { createdAt } },
+        {
+            $group: {
+                _id: {
+                    $let: {
+                        vars: { s: { $toLower: { $ifNull: ["$status", ""] } } },
+                        in: { $cond: [{ $eq: ["$$s", ""] }, "new", "$$s"] },
+                    },
+                },
+                count: { $sum: 1 },
+                revenue: { $sum: "$saleAmount" },
+            },
+        },
+    ]);
+
+    const byStatus = {};
+    let total = 0;
+    for (const row of rows) {
+        byStatus[row._id] = { count: row.count, revenue: row.revenue || 0 };
+        total += row.count;
+    }
+
+    res.status(200).json({ success: true, data: { total, byStatus } });
 });
 
 // 2. Get leads by CSR (Used by Admin Sidebar)
@@ -300,7 +401,7 @@ const updateLead = asyncWrapper(async (req, res) => {
 
     updateData.lastUpdatedBy = req.user.userId;
 
-    const existing = await Lead.findById(req.params.id).select("status");
+    const existing = await Lead.findById(req.params.id).select("status").lean();
     if (!existing) throw new NotFoundError("Lead not found");
     const currentStatus = (existing.status || "").toLowerCase();
 
@@ -350,12 +451,13 @@ const deleteAllLeads = asyncWrapper(async (req, res) => {
 });
 
 const getSingleLead = asyncWrapper(async (req, res) => {
-    const lead = await Lead.findById(req.params.id).populate("assignedTo", "name");
+    const lead = await Lead.findById(req.params.id).populate("assignedTo", "name").lean();
     if (!lead) throw new NotFoundError("Lead not found");
-    res.status(200).json({ success: true, data: lead });
+    res.status(200).json({ success: true, data: withDefaults([lead])[0] });
 });
 
 module.exports = {
+    getAdminLeadSummary,
     getUrgentLeads,
     createLead,
     getLeads,

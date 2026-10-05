@@ -15,6 +15,7 @@ const {
 	getLeadsByCSR,
 	bulkInsertLeads,
 	getUrgentLeads,
+	getAdminLeadSummary,
 } = require("../controllers/leads");
 
 const {
@@ -32,6 +33,7 @@ const upload = require("../middleware/upload");
 
 // --- 1. ADMIN EXCLUSIVE ---
 router.get("/admin/all", auth, authorizeRoles("admin"), getAllLeads);
+router.get("/admin/summary", auth, authorizeRoles("admin"), getAdminLeadSummary);
 router.get("/admin/csr-report/:csrId", auth, authorizeRoles("admin"), getLeadsByCSR);
 router.delete("/admin/delete-all", auth, authorizeRoles("admin"), deleteAllLeads);
 

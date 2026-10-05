@@ -102,6 +102,17 @@ leadSchema.index({ name: 'text', phone: 'text' });
 leadSchema.index({ assignedTo: 1, status: 1 });
 leadSchema.index({ createdAt: -1 });
 leadSchema.index({ assignedTo: 1, isUrgent: -1, createdAt: -1 });
+// Admin "all leads" list: same urgent-first sort without a CSR filter
+// (_id breaks ties so pages never overlap)
+leadSchema.index({ isUrgent: -1, createdAt: -1, _id: 1 });
+// Due today/week/month filters (followUpDate <= end), per CSR
+leadSchema.index({ assignedTo: 1, followUpDate: 1 });
+// CSR dashboard counts (leads created in the last day/week/month)
+leadSchema.index({ assignedTo: 1, createdAt: -1 });
+// Admission form: find the CSR's existing lead with the same phone
+leadSchema.index({ assignedTo: 1, phone: 1 });
+// Admin's urgent leads across every CSR
+leadSchema.index({ status: 1, statusUpdatedAt: -1 });
 
 /* ===================== VIRTUALS ===================== */
 leadSchema.virtual("saleDetails", {
