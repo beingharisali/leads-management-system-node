@@ -92,8 +92,8 @@ const login = asyncWrapper(async (req, res) => {
     throw new UnauthenticatedError("Incorrect email or password.");
   }
 
-  // Strict Block for deactivated CSRs
-  if (user.role === "csr" && user.status === "inactive") {
+  // Strict Block for deactivated CSRs and staff
+  if ((user.role === "csr" || user.role === "staff") && user.status === "inactive") {
     throw new UnauthenticatedError("Your account has been deactivated. Please contact Admin.");
   }
 

@@ -19,8 +19,11 @@ const reportRoutes = require("./routes/reportRoutes");
 const activityRoutes = require("./routes/activityRoutes");
 const setupAdminRouter = require("./routes/setupAdmin");
 const admissionRoutes = require("./routes/admissionRoutes");
+const taskRoutes = require("./routes/taskRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const { startAdmissionSyncLoop } = require("./utils/lmsClient");
+const { startTaskSchedulerLoop } = require("./utils/taskScheduler");
 
 // middlewares
 const notFoundMiddleware = require("./middleware/not-found");
@@ -67,6 +70,8 @@ app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/reports", reportRoutes);
 app.use("/api/v1/activity", activityRoutes);
 app.use("/api/v1/admission", admissionRoutes);
+app.use("/api/v1/tasks", taskRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
 
 // Health Check Route (Just to check if server is alive)
 app.get("/health", (req, res) => res.status(200).send("Server is healthy"));
@@ -87,6 +92,7 @@ const start = async () => {
 		await connectDB(process.env.MONGO_URI);
 		console.log("🚀 Database Connected Successfully");
 		startAdmissionSyncLoop();
+		startTaskSchedulerLoop();
 		app.listen(port, () =>
 			console.log(`✨ Server is blazing on port ${port}`)
 		);

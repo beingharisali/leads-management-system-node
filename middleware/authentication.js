@@ -1,6 +1,21 @@
 // middleware/authentication.js
 const jwt = require("jsonwebtoken");
 
+// Staff accounts only use the task portal. Many lead / sale controllers treat
+// "not a CSR" as "admin" (and return everyone's data), so staff are kept out
+// of every API except these, here in one place, rather than route by route.
+const STAFF_ALLOWED_PATHS = [
+    "/api/v1/tasks",
+    "/api/v1/notifications",
+    "/api/v1/auth/me",
+    "/api/v1/auth/updateUser",
+];
+
+const staffMayUse = (url) => {
+    const path = String(url || "").split("?")[0];
+    return STAFF_ALLOWED_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+};
+
 /**
  * ======================
  * AUTHENTICATION MIDDLEWARE
@@ -39,6 +54,13 @@ const auth = async (req, res, next) => {
             name: payload.name,
             email: payload.email,
         };
+
+        if (req.user.role === "staff" && !staffMayUse(req.originalUrl)) {
+            return res.status(403).json({
+                success: false,
+                msg: "You do not have permission to perform this action.",
+            });
+        }
 
         next();
     } catch (error) {
