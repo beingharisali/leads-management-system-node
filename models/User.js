@@ -29,7 +29,8 @@ const UserSchema = new mongoose.Schema({
 	},
 	role: {
 		type: String,
-		enum: ["csr", "admin"],
+		// staff: team members who only use the task portal (no leads)
+		enum: ["csr", "admin", "staff"],
 		default: "csr"
 	},
 	/**
