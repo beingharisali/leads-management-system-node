@@ -21,7 +21,9 @@ const recurringTaskSchema = new mongoose.Schema(
 		weekday: { type: Number, min: 0, max: 6 },
 		// monthly: 1-31 (falls on the month's last day in shorter months)
 		dayOfMonth: { type: Number, min: 1, max: 31 },
-		// daily: skip Sundays (the institute's day off)
+		// daily: weekdays with no task (0 = Sunday ... 6 = Saturday)
+		skipWeekdays: [{ type: Number, min: 0, max: 6 }],
+		// Legacy flag from before skipWeekdays; kept in sync (true when Sunday is skipped)
 		skipSundays: { type: Boolean, default: false },
 		// Deadline on each occurrence day, server-local "HH:mm"
 		dueTime: { type: String, default: "18:00", match: [/^([01]\d|2[0-3]):[0-5]\d$/, "Deadline time must be HH:mm"] },

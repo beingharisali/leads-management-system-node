@@ -35,7 +35,16 @@ const applyFields = async (target, body, isNew) => {
 	if (body.category !== undefined || isNew) target.category = WORKFLOW_KEYS.includes(body.category) ? body.category : "general";
 	if (body.priority !== undefined) target.priority = TASK_PRIORITIES.includes(body.priority) ? body.priority : "normal";
 	if (body.requiresApproval !== undefined) target.requiresApproval = body.requiresApproval !== false && body.requiresApproval !== "false";
-	if (body.skipSundays !== undefined) target.skipSundays = Boolean(body.skipSundays);
+	if (body.skipWeekdays !== undefined) {
+		if (!Array.isArray(body.skipWeekdays)) throw new BadRequestError("Skipped days must be a list of weekdays.");
+		const days = [...new Set(body.skipWeekdays.map(Number))].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6).sort();
+		if (days.length === 7) throw new BadRequestError("You can't skip every day of the week.");
+		target.skipWeekdays = days;
+		target.skipSundays = days.includes(0);
+	} else if (body.skipSundays !== undefined) {
+		target.skipSundays = Boolean(body.skipSundays);
+		target.skipWeekdays = target.skipSundays ? [0] : [];
+	}
 
 	if (body.checklist !== undefined) {
 		if (!Array.isArray(body.checklist)) throw new BadRequestError("The checklist must be a list of steps.");

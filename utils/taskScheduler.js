@@ -12,6 +12,13 @@ const { notifyUsers, notifyAdmins } = require("./taskNotify");
 
 const LOOP_INTERVAL_MS = 60 * 1000;
 
+// Weekdays a daily template skips. Templates saved before skipWeekdays existed
+// only have the skipSundays flag.
+const skippedWeekdays = (template) => {
+	if (Array.isArray(template.skipWeekdays) && template.skipWeekdays.length > 0) return template.skipWeekdays;
+	return template.skipSundays ? [0] : [];
+};
+
 const lastDayOfMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 
 // Whether a repeating template has an occurrence on `date`
@@ -22,7 +29,7 @@ const occursOn = (template, date) => {
 
 	switch (template.frequency) {
 		case "daily":
-			return !(template.skipSundays && date.getDay() === 0);
+			return !skippedWeekdays(template).includes(date.getDay());
 		case "weekly":
 			return date.getDay() === template.weekday;
 		case "monthly":
