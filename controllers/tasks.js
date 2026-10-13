@@ -322,7 +322,8 @@ const cancelTask = async (req, res) => {
 
 /* ================= ASSIGNEE: PROGRESS ================= */
 
-// PATCH /tasks/:id/progress { action: start | block | unblock, reason }
+// PATCH /tasks/:id/progress { action: start | unblock, reason }
+// (unblock stays so tasks blocked before "block" was removed can resume)
 const updateProgress = async (req, res) => {
 	const task = await findTaskOr404(req.params.id);
 	assertAssignee(req, task);
@@ -336,11 +337,8 @@ const updateProgress = async (req, res) => {
 		task.startedAt = task.startedAt || new Date();
 		task.history.push(historyEntry("started", req));
 	} else if (action === "block") {
-		if (!["todo", "in_progress"].includes(task.status)) throw new BadRequestError("Only an open task can be marked blocked.");
-		if (!reason) throw new BadRequestError("Please explain what is blocking the work.");
-		task.status = "blocked";
-		task.blockedReason = reason;
-		task.history.push(historyEntry("blocked", req, reason));
+		// Team members can no longer mark a task blocked
+		throw new BadRequestError("Tasks can't be marked as blocked. Please complete the task or contact the admin.");
 	} else if (action === "unblock") {
 		if (task.status !== "blocked") throw new BadRequestError("This task isn't blocked.");
 		task.status = "in_progress";
@@ -351,10 +349,6 @@ const updateProgress = async (req, res) => {
 	}
 
 	await task.save();
-
-	if (action === "block") {
-		await notifyAdmins("task_blocked", `${req.user.name || "A team member"} is blocked on "${task.title}": ${reason}`, task._id);
-	}
 	res.status(StatusCodes.OK).json({ success: true, data: task });
 };
 
