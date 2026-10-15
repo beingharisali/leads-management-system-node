@@ -9,6 +9,7 @@ const {
 	getTasks,
 	getTask,
 	createTask,
+	createOwnTask,
 	updateTask,
 	cancelTask,
 	updateProgress,
@@ -33,6 +34,8 @@ const teamOnly = [auth, authorizeRoles("csr", "staff")];
 router.get("/meta", everyone, getMeta);
 router.get("/team", adminOnly, getTeam);
 router.get("/dashboard", adminOnly, getDashboard);
+// A staff member / CSR adds a task for themselves
+router.post("/self", teamOnly, createOwnTask);
 
 router.route("/recurring")
 	.get(adminOnly, getRecurringTasks)
