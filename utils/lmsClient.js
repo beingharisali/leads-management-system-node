@@ -23,7 +23,7 @@ const lmsRequest = async (path, options = {}) => {
 			"x-api-key": process.env.LMS_API_KEY,
 			...(options.headers || {}),
 		},
-		signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+		signal: options.signal || AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 	});
 
 	const body = await res.json().catch(() => ({}));
@@ -110,6 +110,35 @@ const forwardAdmission = async (admissionId) => {
 	}
 };
 
+// The admin's decisions for these admissions, saved on our copies. Resolves
+// with { [admissionId]: review } for the ones the LMS knows; throws if the
+// LMS can't be reached (callers fall back to the saved values).
+const REVIEW_TIMEOUT_MS = 5 * 1000;
+const fetchAdmissionReviews = async (admissionIds) => {
+	if (!admissionIds.length) return {};
+	const body = await lmsRequest("/admissions/intake/reviews", {
+		method: "POST",
+		body: JSON.stringify({ sourceIds: admissionIds.map(String) }),
+		signal: AbortSignal.timeout(REVIEW_TIMEOUT_MS),
+	});
+
+	const reviews = {};
+	for (const r of Array.isArray(body?.data) ? body.data : []) {
+		if (!r?.sourceId || !["new", "reviewed", "approved", "rejected"].includes(r.status)) continue;
+		reviews[r.sourceId] = {
+			status: r.status,
+			notes: r.status === "rejected" ? String(r.notes || "").slice(0, 2000) : "",
+			reviewedAt: r.reviewedAt ? new Date(r.reviewedAt) : null,
+		};
+	}
+
+	const changes = Object.entries(reviews).map(([id, review]) => ({
+		updateOne: { filter: { _id: id }, update: { $set: { review } } },
+	}));
+	if (changes.length) await Admission.bulkWrite(changes, { ordered: false });
+	return reviews;
+};
+
 // Resends admissions the LMS hasn't received yet (it was down, key wrong...).
 const retryUnsyncedAdmissions = async () => {
 	if (!isConfigured()) return;
@@ -137,7 +166,9 @@ const startAdmissionSyncLoop = () => {
 };
 
 module.exports = {
+	isConfigured,
 	forwardAdmission,
+	fetchAdmissionReviews,
 	retryUnsyncedAdmissions,
 	startAdmissionSyncLoop,
 };
