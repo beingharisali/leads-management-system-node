@@ -8,7 +8,7 @@ const Lead = require("../models/leads");
 const Admission = require("../models/Admission");
 const Sale = require("../models/Sale");
 const { startOfDay } = require("../models/leads");
-const { forwardAdmission } = require("../utils/lmsClient");
+const { forwardAdmission, fetchAdmissionReviews, isConfigured: lmsConfigured } = require("../utils/lmsClient");
 const cloudinary = require("../utils/cloudinary");
 const { isImageBuffer } = require("../middleware/admissionUpload");
 const { COURSE_CATALOG, OUTLINE_CHECKED_ON, TERMS } = require("../config/admissionForm");
@@ -248,6 +248,20 @@ const getMyAdmissions = asyncWrapper(async (req, res) => {
 		Admission.countDocuments(filter),
 	]);
 
+	// Pick up the admin's latest decisions; if the LMS is unreachable the
+	// copies saved last time are shown instead.
+	const syncedIds = admissions.filter((a) => a.sync?.status === "synced").map((a) => String(a._id));
+	if (syncedIds.length && lmsConfigured()) {
+		try {
+			const reviews = await fetchAdmissionReviews(syncedIds);
+			for (const a of admissions) {
+				if (reviews[String(a._id)]) a.review = reviews[String(a._id)];
+			}
+		} catch (err) {
+			logger.error(`Fetching admission reviews from the LMS failed: ${err.message}`);
+		}
+	}
+
 	res.status(StatusCodes.OK).json({
 		success: true,
 		data: admissions.map(toCsrAdmission),
@@ -257,11 +271,19 @@ const getMyAdmissions = asyncWrapper(async (req, res) => {
 	});
 });
 
+// The payment receipt can be printed once the admin approved the admission
+// after the payment was recorded (an earlier approval doesn't cover it).
+const canPrintReceipt = (payment, review) =>
+	payment?.status === "paid" && review?.status === "approved" &&
+	Boolean(payment.paidAt && review.reviewedAt) && new Date(review.reviewedAt) >= new Date(payment.paidAt);
+
 // Photo ids swapped for signed links. Older submissions have no payment block.
-const toCsrAdmission = ({ idCardPhoto, selfiePhoto, payment, ...a }) => {
+const toCsrAdmission = ({ idCardPhoto, selfiePhoto, payment, review, ...a }) => {
 	const { screenshotPhoto, ...paymentInfo } = payment || {};
 	return {
 		...a,
+		review: { status: "", notes: "", reviewedAt: null, ...review },
+		canPrintReceipt: canPrintReceipt(payment, review),
 		idCardUrl: cloudinary.photoUrl(idCardPhoto),
 		selfieUrl: cloudinary.photoUrl(selfiePhoto),
 		payment: {

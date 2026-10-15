@@ -62,6 +62,15 @@ const admissionSchema = new mongoose.Schema(
 			sale: { type: mongoose.Schema.Types.ObjectId, ref: "Sale", default: null },
 		},
 
+		// The LMS admin's decision, copied over when the CSR loads their list
+		// (utils/lmsClient.js fetchAdmissionReviews). Approved + paid lets the
+		// CSR print the payment receipt. Notes are only sent for rejections.
+		review: {
+			status: { type: String, enum: ["", "new", "reviewed", "approved", "rejected"], default: "" },
+			notes: { type: String, default: "" },
+			reviewedAt: { type: Date, default: null },
+		},
+
 		sync: {
 			status: {
 				type: String,
