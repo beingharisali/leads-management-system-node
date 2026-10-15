@@ -6,7 +6,7 @@ const notificationSchema = new mongoose.Schema(
 		recipient: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 		type: {
 			type: String,
-			enum: ["task_assigned", "task_overdue", "task_submitted", "task_approved", "task_rejected", "task_blocked", "task_cancelled"],
+			enum: ["task_assigned", "task_overdue", "task_submitted", "task_approved", "task_rejected", "task_blocked", "task_cancelled", "task_self_created"],
 			required: true,
 		},
 		message: { type: String, required: true },

@@ -89,6 +89,8 @@ const summarize = (task, now) => {
 		blockedReason: task.blockedReason,
 		assignedTo: task.assignedTo,
 		createdBy: task.createdBy,
+		// Added by the team member for themselves
+		selfAssigned: Boolean(task.createdBy) && sameId(task.createdBy, task.assignedTo),
 		missedDeadline: task.missedDeadline,
 		isOverdue: isOverdue(task, now),
 		recurring: Boolean(task.recurringTask),
@@ -243,6 +245,43 @@ const createTask = async (req, res) => {
 	);
 
 	res.status(StatusCodes.CREATED).json({ success: true, data: tasks });
+};
+
+/* ================= TEAM MEMBER: ADD OWN TASK ================= */
+
+// POST /tasks/self - a staff member / CSR adds a one-time task for themselves.
+// Always assigned to the caller and always needs the admin's approval; once
+// created only the admin can edit or cancel it.
+const createOwnTask = async (req, res) => {
+	const { title, description, category, priority, scheduledFor, dueAt } = req.body;
+
+	if (!String(title || "").trim()) throw new BadRequestError("Please provide a task title.");
+	if (!isDayKey(scheduledFor)) throw new BadRequestError("Please choose the day the task is for.");
+	const deadline = parseDueAt(dueAt);
+	if (deadline.getTime() <= Date.now()) throw new BadRequestError("The deadline must be in the future.");
+
+	const [me] = await loadAssignees([req.user.userId]);
+
+	const workflow = pickEnum(category, WORKFLOW_KEYS, "general");
+	const checklist = parseChecklist(req.body.checklist) ?? workflowByKey(workflow).checklist.map((text) => ({ text }));
+
+	const task = await Task.create({
+		title: String(title).trim(),
+		description: String(description || "").trim(),
+		category: workflow,
+		priority: pickEnum(priority, TASK_PRIORITIES, "normal"),
+		assignedTo: me._id,
+		createdBy: me._id,
+		scheduledFor,
+		dueAt: deadline,
+		requiresApproval: true,
+		checklist: checklist.map((i) => ({ text: i.text })),
+		history: [historyEntry("created", req, `Added by ${me.name} for themselves`)],
+	});
+
+	await notifyAdmins("task_self_created", `${me.name} added a task for themselves: ${task.title} (for ${task.scheduledFor})`, task._id);
+
+	res.status(StatusCodes.CREATED).json({ success: true, data: task });
 };
 
 // PATCH /tasks/:id - admin edits an open task
@@ -571,6 +610,7 @@ module.exports = {
 	getTasks,
 	getTask,
 	createTask,
+	createOwnTask,
 	updateTask,
 	cancelTask,
 	updateProgress,
