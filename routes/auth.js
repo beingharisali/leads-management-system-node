@@ -10,11 +10,15 @@ const {
     getAllCSRs,
     getSingleUser,
     getAgent,
-    updateAgentPhones
+    updateAgentPhones,
+    getAccounts,
+    updateAccess,
+    getDeleteCheck,
+    deleteAccount
 } = require('../controllers/auth');
 
 // Middleware: 'auth' for token verification, 'authorizeRoles' for Admin-only access
-const { auth, authorizeRoles } = require('../middleware/authentication');
+const { auth, authorizeRoles, realAdminOnly } = require('../middleware/authentication');
 const asyncWrapper = require('../middleware/async');
 
 // ================= PUBLIC ROUTES =================
@@ -75,6 +79,32 @@ router.patch('/agent/:id/phones',
     auth,
     authorizeRoles('admin'),
     asyncWrapper(updateAgentPhones)
+);
+
+// 6. All CSR + staff accounts with their access (admin, or staff with "accounts")
+router.get('/accounts',
+    auth,
+    authorizeRoles('admin'),
+    asyncWrapper(getAccounts)
+);
+
+// 7. Team Lead / feature access - the real admin only
+router.patch('/accounts/:id/access',
+    auth,
+    realAdminOnly,
+    asyncWrapper(updateAccess)
+);
+
+// 8. Permanently delete a CSR / staff account - the real admin only
+router.get('/accounts/:id/delete-check',
+    auth,
+    realAdminOnly,
+    asyncWrapper(getDeleteCheck)
+);
+router.delete('/accounts/:id',
+    auth,
+    realAdminOnly,
+    asyncWrapper(deleteAccount)
 );
 
 module.exports = router;

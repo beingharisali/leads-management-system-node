@@ -1,5 +1,6 @@
 // middleware/authentication.js
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 // Staff accounts only use the task portal. Many lead / sale controllers treat
 // "not a CSR" as "admin" (and return everyone's data), so staff are kept out
@@ -11,9 +12,40 @@ const STAFF_ALLOWED_PATHS = [
     "/api/v1/auth/updateUser",
 ];
 
-const staffMayUse = (url) => {
-    const path = String(url || "").split("?")[0];
-    return STAFF_ALLOWED_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+const pathOf = (url) => String(url || "").split("?")[0];
+const underAny = (path, prefixes) => prefixes.some((p) => path === p || path.startsWith(`${p}/`));
+
+const staffMayUse = (url) => underAny(pathOf(url), STAFF_ALLOWED_PATHS);
+
+// Admin sections a staff member can be given (User.permissions). Inside a
+// section they are treated as the admin, so the existing admin code serves
+// them unchanged. Things only the real admin may do are guarded with
+// `realAdminOnly` on their routes.
+const STAFF_SECTIONS = [
+    {
+        permission: "leads",
+        paths: ["/api/v1/lead", "/api/v1/dashboard", "/api/v1/sale", "/api/v1/activity/presence", "/api/v1/activity/csr"],
+    },
+    // A CSR's profile card on their dashboard (changing the numbers needs "accounts")
+    { permission: "leads", paths: ["/api/v1/auth/agent"], methods: ["GET"] },
+    {
+        permission: "accounts",
+        paths: ["/api/v1/auth/register", "/api/v1/auth/update-status", "/api/v1/auth/agent", "/api/v1/auth/team-members", "/api/v1/auth/accounts"],
+    },
+    // Only from the admin task pages (they send "X-Portal: admin"); in the
+    // staff portal the same person still sees just their own tasks.
+    { permission: "tasks", paths: ["/api/v1/tasks"], adminPortalOnly: true },
+];
+
+const staffSectionAccess = (req, permissions) => {
+    const path = pathOf(req.originalUrl);
+    const fromAdminPortal = String(req.headers["x-portal"] || "").toLowerCase() === "admin";
+    return STAFF_SECTIONS.some((s) =>
+        permissions.includes(s.permission)
+        && underAny(path, s.paths)
+        && (!s.methods || s.methods.includes(req.method))
+        && (!s.adminPortalOnly || fromAdminPortal)
+    );
 };
 
 /**
@@ -54,15 +86,6 @@ const auth = async (req, res, next) => {
             name: payload.name,
             email: payload.email,
         };
-
-        if (req.user.role === "staff" && !staffMayUse(req.originalUrl)) {
-            return res.status(403).json({
-                success: false,
-                msg: "You do not have permission to perform this action.",
-            });
-        }
-
-        next();
     } catch (error) {
         // 5. Specific Error Handling
         let message = "Your session is invalid. Please log in again.";
@@ -73,6 +96,31 @@ const auth = async (req, res, next) => {
             msg: message,
         });
     }
+
+    // 6. The account must still exist (the admin can delete accounts), and
+    // its permissions are read fresh so changes apply straight away.
+    const account = await User.findById(req.user.userId).select("permissions").lean();
+    if (!account) {
+        return res.status(401).json({
+            success: false,
+            msg: "Your account no longer exists. Please contact Admin.",
+        });
+    }
+    req.user.permissions = account.permissions || [];
+
+    if (req.user.role === "staff") {
+        if (staffSectionAccess(req, req.user.permissions)) {
+            req.user.role = "admin";
+            req.user.staffAccess = true; // acting as admin through a permission
+        } else if (!staffMayUse(req.originalUrl)) {
+            return res.status(403).json({
+                success: false,
+                msg: "You do not have permission to perform this action.",
+            });
+        }
+    }
+
+    next();
 };
 
 /**
@@ -104,4 +152,18 @@ const authorizeRoles = (...roles) => {
     };
 };
 
-module.exports = { auth, authorizeRoles };
+/**
+ * Only the real admin account - not a staff member with admin access
+ * (deleting accounts, changing access, deleting all leads).
+ */
+const realAdminOnly = (req, res, next) => {
+    if (!req.user || req.user.role !== "admin" || req.user.staffAccess) {
+        return res.status(403).json({
+            success: false,
+            msg: "Only the admin can do this.",
+        });
+    }
+    next();
+};
+
+module.exports = { auth, authorizeRoles, realAdminOnly };

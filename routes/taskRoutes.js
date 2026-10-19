@@ -32,7 +32,7 @@ const teamOnly = [auth, authorizeRoles("csr", "staff")];
 
 // Fixed paths first so they never match "/:id"
 router.get("/meta", everyone, getMeta);
-router.get("/team", adminOnly, getTeam);
+router.get("/team", everyone, getTeam); // admin + Team Leads (checked in the controller)
 router.get("/dashboard", adminOnly, getDashboard);
 // A staff member / CSR adds a task for themselves
 router.post("/self", teamOnly, createOwnTask);
@@ -46,14 +46,16 @@ router.route("/recurring/:id")
 
 router.route("/")
 	.get(everyone, getTasks) // team members only get their own tasks
-	.post(adminOnly, createTask);
+	.post(everyone, createTask); // admin + Team Leads (checked in the controller)
 
 router.route("/:id")
 	.get(everyone, getTask)
-	.patch(adminOnly, updateTask);
+	.patch(everyone, updateTask);
 
-router.post("/:id/cancel", adminOnly, cancelTask);
-router.post("/:id/review", adminOnly, reviewTask);
+// Edit / cancel / review: the admin, or the Team Lead who assigned the task
+// (checked in the controller)
+router.post("/:id/cancel", everyone, cancelTask);
+router.post("/:id/review", everyone, reviewTask);
 router.patch("/:id/progress", teamOnly, updateProgress);
 router.patch("/:id/checklist/:itemId", everyone, toggleChecklistItem);
 // Log in first so anonymous requests never reach the uploader
