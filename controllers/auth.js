@@ -1,4 +1,10 @@
 const User = require("../models/User");
+const { cleanPermissions } = User;
+const Lead = require("../models/leads");
+const Admission = require("../models/Admission");
+const Task = require("../models/Task");
+const RecurringTask = require("../models/RecurringTask");
+const Notification = require("../models/Notification");
 const { StatusCodes } = require("http-status-codes");
 const jwt = require("jsonwebtoken");
 const asyncWrapper = require("../middleware/async");
@@ -56,6 +62,12 @@ const register = asyncWrapper(async (req, res) => {
   if (!name || !email || !password) {
     throw new BadRequestError("Name, email and password are required.");
   }
+  // A staff member with account access can only add CSRs / staff, and
+  // only the admin decides who gets extra access
+  if (req.user.staffAccess && !["csr", "staff"].includes(String(role).toLowerCase())) {
+    throw new ForbiddenError("You can only create CSR or staff accounts.");
+  }
+  const permissions = req.user.staffAccess ? [] : cleanPermissions(String(role).toLowerCase(), req.body.permissions);
   if (role.toLowerCase() === "csr" && (!personalPhone?.trim() || !officialPhone?.trim())) {
     throw new BadRequestError("Personal number and official/allotted number are required.");
   }
@@ -73,11 +85,12 @@ const register = asyncWrapper(async (req, res) => {
     status: "active",
     personalPhone: personalPhone?.trim() || "",
     officialPhone: officialPhone?.trim() || "",
+    permissions,
   });
   res.status(StatusCodes.CREATED).json({
     success: true,
     msg: "User created successfully",
-    user: { _id: user._id, name: user.name, status: user.status }
+    user: { _id: user._id, name: user.name, status: user.status, permissions: user.permissions }
   });
 });
 
@@ -106,7 +119,7 @@ const login = asyncWrapper(async (req, res) => {
   res.status(StatusCodes.OK).json({
     success: true,
     token,
-    user: { _id: user._id, name: user.name, email: user.email, role: user.role, status: user.status || "active" },
+    user: { _id: user._id, name: user.name, email: user.email, role: user.role, status: user.status || "active", permissions: user.permissions || [] },
   });
 });
 
@@ -129,6 +142,10 @@ const updateStatus = asyncWrapper(async (req, res) => {
   // 2. Security Check
   if (req.user.role !== "admin") {
     throw new ForbiddenError("Only an admin can change an agent's status.");
+  }
+
+  if (req.user.staffAccess && String(id) === String(req.user.userId)) {
+    throw new ForbiddenError("You can't change your own account's status.");
   }
 
   // 3. Smart ID Mapping (Handles MongoDB ID or Custom CSR ID)
@@ -170,7 +187,7 @@ const getSingleUser = asyncWrapper(async (req, res) => {
 
   res.status(StatusCodes.OK).json({
     success: true,
-    user: { _id: user._id, name: user.name, email: user.email, role: user.role, status: user.status || "active" },
+    user: { _id: user._id, name: user.name, email: user.email, role: user.role, status: user.status || "active", permissions: user.permissions || [] },
   });
 });
 
@@ -202,7 +219,7 @@ const updateUser = asyncWrapper(async (req, res) => {
   await user.save();
   res.status(StatusCodes.OK).json({
     success: true,
-    user: { _id: user._id, name: user.name, email: user.email, role: user.role, status: user.status || "active" },
+    user: { _id: user._id, name: user.name, email: user.email, role: user.role, status: user.status || "active", permissions: user.permissions || [] },
   });
 });
 
@@ -239,7 +256,111 @@ const updateAgentPhones = asyncWrapper(async (req, res) => {
   res.status(StatusCodes.OK).json({ success: true, data: user });
 });
 
+/* ================= TEAM ACCOUNTS (CSRs + STAFF) ================= */
+
+const ACCOUNT_ROLES = ["csr", "staff"];
+const ACCOUNT_FIELDS = "name email role status permissions personalPhone officialPhone createdAt";
+
+const findAccountOr404 = async (id) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new NotFoundError("Account not found.");
+  const user = await User.findOne({ _id: id, role: { $in: ACCOUNT_ROLES } });
+  if (!user) throw new NotFoundError("Account not found.");
+  return user;
+};
+
+// GET /auth/accounts - every CSR and staff account with its access
+const getAccounts = asyncWrapper(async (req, res) => {
+  const accounts = await User.find({ role: { $in: ACCOUNT_ROLES } })
+    .select(ACCOUNT_FIELDS)
+    .sort({ role: 1, name: 1 })
+    .lean();
+  res.status(StatusCodes.OK).json({
+    success: true,
+    data: accounts.map((a) => ({ ...a, permissions: a.permissions || [] })),
+  });
+});
+
+// PATCH /auth/accounts/:id/access { permissions: [] } - admin only
+const updateAccess = asyncWrapper(async (req, res) => {
+  const user = await findAccountOr404(req.params.id);
+  user.permissions = cleanPermissions(user.role, req.body?.permissions);
+  await user.save();
+  res.status(StatusCodes.OK).json({
+    success: true,
+    data: { _id: user._id, name: user.name, role: user.role, permissions: user.permissions },
+  });
+});
+
+// GET /auth/accounts/:id/delete-check - what deleting this account affects
+const getDeleteCheck = asyncWrapper(async (req, res) => {
+  const user = await findAccountOr404(req.params.id);
+  const [leads, admissions, openTasks, repeatingTasks] = await Promise.all([
+    Lead.countDocuments({ assignedTo: user._id }),
+    Admission.countDocuments({ csr: user._id }),
+    Task.countDocuments({ assignedTo: user._id, status: { $in: Task.OPEN_STATUSES } }),
+    RecurringTask.countDocuments({ assignedTo: user._id, active: true }),
+  ]);
+  res.status(StatusCodes.OK).json({
+    success: true,
+    data: { _id: user._id, name: user.name, role: user.role, leads, admissions, openTasks, repeatingTasks },
+  });
+});
+
+// DELETE /auth/accounts/:id?reassignTo=<csrId> - admin only.
+// Removes the login account for good. Leads, sales, admissions and task
+// history are kept; a CSR's leads (and admissions) can be moved to another
+// CSR first. Their open tasks are cancelled and repeating tasks stopped.
+const deleteAccount = asyncWrapper(async (req, res) => {
+  const user = await findAccountOr404(req.params.id);
+  if (String(user._id) === String(req.user.userId)) throw new BadRequestError("You can't delete your own account.");
+
+  let movedTo = null;
+  const reassignTo = String(req.query.reassignTo || "").trim();
+  if (reassignTo) {
+    if (user.role !== "csr") throw new BadRequestError("Only a CSR's leads can be moved.");
+    if (!mongoose.Types.ObjectId.isValid(reassignTo) || reassignTo === String(user._id)) {
+      throw new BadRequestError("Please choose another CSR to move the leads to.");
+    }
+    movedTo = await User.findOne({ _id: reassignTo, role: "csr" }).select("name status").lean();
+    if (!movedTo) throw new BadRequestError("The CSR to move the leads to was not found.");
+    if (movedTo.status === "inactive") throw new BadRequestError(`${movedTo.name}'s account is deactivated. Choose an active CSR.`);
+  }
+
+  const now = new Date();
+  const result = { leadsMoved: 0, admissionsMoved: 0, tasksCancelled: 0, repeatingStopped: 0 };
+
+  if (movedTo) {
+    result.leadsMoved = (await Lead.updateMany({ assignedTo: user._id }, { $set: { assignedTo: movedTo._id } })).modifiedCount;
+    result.admissionsMoved = (await Admission.updateMany({ csr: user._id }, { $set: { csr: movedTo._id } })).modifiedCount;
+  }
+
+  result.tasksCancelled = (await Task.updateMany(
+    { assignedTo: user._id, status: { $in: Task.OPEN_STATUSES } },
+    {
+      $set: { status: "cancelled", cancelledAt: now },
+      $push: { history: { action: "cancelled", by: req.user.userId, at: now, note: `${user.name}'s account was deleted` } },
+    }
+  )).modifiedCount;
+  result.repeatingStopped = (await RecurringTask.updateMany(
+    { assignedTo: user._id, active: true },
+    { $set: { active: false } }
+  )).modifiedCount;
+  await Notification.deleteMany({ recipient: user._id });
+
+  await User.deleteOne({ _id: user._id });
+
+  res.status(StatusCodes.OK).json({
+    success: true,
+    msg: `${user.name}'s account was deleted.`,
+    data: { ...result, movedTo: movedTo ? { _id: movedTo._id, name: movedTo.name } : null },
+  });
+});
+
 module.exports = {
+  getAccounts,
+  updateAccess,
+  getDeleteCheck,
+  deleteAccount,
   getAgent,
   updateAgentPhones,
   firstAdminSignup,

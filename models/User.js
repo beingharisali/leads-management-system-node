@@ -63,7 +63,13 @@ const UserSchema = new mongoose.Schema({
 		lowercase: true,
 		unique: true,
 		sparse: true
-	}
+	},
+	// Extra access the admin has given this account (see PERMISSIONS below).
+	// CSRs can only be Team Leads; staff can get any of them.
+	permissions: [{
+		type: String,
+		enum: ["team_lead", "leads", "tasks", "accounts"]
+	}]
 }, { timestamps: true }); // Timestamps add karne se analytics behtar hoti hai
 
 // Password Hashing
@@ -87,4 +93,19 @@ UserSchema.methods.comparePassword = async function (candidatePassword) {
 	return await bcrypt.compare(candidatePassword, this.password);
 };
 
+// team_lead: assigns tasks to other team members and manages the tasks they assigned
+// leads:     Leads Console (all leads, stats, CSR dashboards)
+// tasks:     Team Tasks admin (every task, repeating tasks, approvals)
+// accounts:  create CSR / staff accounts, activate / deactivate them, change CSR numbers
+const PERMISSIONS = ["team_lead", "leads", "tasks", "accounts"];
+const PERMISSIONS_BY_ROLE = { csr: ["team_lead"], staff: PERMISSIONS, admin: [] };
+
+// Keeps only the permissions this role can have, without duplicates
+const cleanPermissions = (role, list) => {
+	const allowed = PERMISSIONS_BY_ROLE[role] || [];
+	return [...new Set((Array.isArray(list) ? list : []).map(String))].filter((p) => allowed.includes(p));
+};
+
 module.exports = mongoose.model("User", UserSchema);
+module.exports.PERMISSIONS = PERMISSIONS;
+module.exports.cleanPermissions = cleanPermissions;

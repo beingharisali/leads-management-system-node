@@ -15,6 +15,29 @@ const TEAM_ROLES = ["csr", "staff"];
 
 const isAdmin = (req) => req.user.role === "admin";
 const sameId = (a, b) => String(a?._id || a) === String(b?._id || b);
+// A team member the admin made a Team Lead: assigns work to others and
+// manages the tasks they assigned
+const isTeamLead = (req) => !isAdmin(req) && (req.user.permissions || []).includes("team_lead");
+
+// Admin, or the Team Lead who assigned this task to someone else
+const canManage = (req, task) =>
+	isAdmin(req)
+	|| (isTeamLead(req) && sameId(task.createdBy, req.user.userId) && !sameId(task.assignedTo, req.user.userId));
+
+const assertCanManage = (req, task) => {
+	if (!canManage(req, task)) throw new ForbiddenError("Only the admin or the Team Lead who assigned this task can do this.");
+};
+
+const assertAdminOrLead = (req) => {
+	if (!isAdmin(req) && !isTeamLead(req)) throw new ForbiddenError("You do not have permission to perform this action.");
+};
+
+// Team Leads give work to others; their own tasks go through "add my own task"
+const assertNotSelf = (req, ids) => {
+	if (!isAdmin(req) && ids.some((id) => sameId(id, req.user.userId))) {
+		throw new BadRequestError("To add a task for yourself, use New Task in My Tasks.");
+	}
+};
 
 const isOverdue = (task, now = Date.now()) =>
 	ACTIONABLE_STATUSES.includes(task.status) && new Date(task.dueAt).getTime() < now;
@@ -118,9 +141,13 @@ const getMeta = async (req, res) => {
 	});
 };
 
-// GET /tasks/team (admin) - staff and CSRs, for assigning work
+// GET /tasks/team (admin, Team Lead) - staff and CSRs, for assigning work.
+// A Team Lead doesn't see themselves in the list.
 const getTeam = async (req, res) => {
-	const team = await User.find({ role: { $in: TEAM_ROLES } })
+	assertAdminOrLead(req);
+	const filter = { role: { $in: TEAM_ROLES } };
+	if (!isAdmin(req)) filter._id = { $ne: req.user.userId };
+	const team = await User.find(filter)
 		.select("name email role status")
 		.sort({ status: 1, name: 1 })
 		.lean();
@@ -140,6 +167,11 @@ const getTasks = async (req, res) => {
 			if (!mongoose.isValidObjectId(req.query.assignedTo)) throw new BadRequestError("Invalid team member.");
 			filter.assignedTo = req.query.assignedTo;
 		}
+	} else if (req.query.view === "assigned") {
+		// A Team Lead's "Assigned by me": tasks they gave to others
+		assertAdminOrLead(req);
+		filter.createdBy = req.user.userId;
+		filter.assignedTo = { $ne: req.user.userId };
 	} else {
 		filter.assignedTo = req.user.userId;
 	}
@@ -168,7 +200,7 @@ const getTasks = async (req, res) => {
 		Task.find(filter)
 			.select(LIST_FIELDS)
 			.populate("assignedTo", "name role")
-			.populate("createdBy", "name")
+			.populate("createdBy", "name role")
 			.sort(isHistory ? { updatedAt: -1 } : { dueAt: 1 })
 			.skip((page - 1) * limit)
 			.limit(limit)
@@ -190,15 +222,17 @@ const getTask = async (req, res) => {
 
 	const task = await Task.findById(req.params.id)
 		.populate("assignedTo", "name role email")
-		.populate("createdBy", "name")
+		.populate("createdBy", "name role")
 		.populate("submissions.submittedBy", "name")
 		.populate("submissions.reviewedBy", "name")
 		.populate("history.by", "name role")
 		.lean();
 	if (!task) throw new NotFoundError("Task not found.");
-	assertCanSee(req, task);
+	if (!canManage(req, task)) assertCanSee(req, task);
 
 	task.isOverdue = isOverdue(task);
+	// Lets the page show the edit / cancel / review controls
+	task.canManage = canManage(req, task);
 	task.submissions = (task.submissions || []).map((s) => ({
 		...s,
 		files: (s.files || []).map((f) => ({ _id: f._id, name: f.name, mimeType: f.mimeType, size: f.size, resourceType: f.resourceType, url: proofUrl(f) })),
@@ -207,10 +241,11 @@ const getTask = async (req, res) => {
 	res.status(StatusCodes.OK).json({ success: true, data: task });
 };
 
-/* ================= ADMIN: CREATE / EDIT / CANCEL ================= */
+/* ================= ADMIN / TEAM LEAD: CREATE / EDIT / CANCEL ================= */
 
 // POST /tasks - one task per chosen team member (assignedTo may be a list)
 const createTask = async (req, res) => {
+	assertAdminOrLead(req);
 	const { title, description, category, priority, scheduledFor, dueAt, requiresApproval } = req.body;
 
 	if (!String(title || "").trim()) throw new BadRequestError("Please provide a task title.");
@@ -219,6 +254,7 @@ const createTask = async (req, res) => {
 	if (deadline.getTime() <= Date.now()) throw new BadRequestError("The deadline must be in the future.");
 
 	const assigneeIds = Array.isArray(req.body.assignedTo) ? req.body.assignedTo : [req.body.assignedTo].filter(Boolean);
+	assertNotSelf(req, assigneeIds);
 	const assignees = await loadAssignees(assigneeIds);
 
 	const workflow = pickEnum(category, WORKFLOW_KEYS, "general");
@@ -284,9 +320,10 @@ const createOwnTask = async (req, res) => {
 	res.status(StatusCodes.CREATED).json({ success: true, data: task });
 };
 
-// PATCH /tasks/:id - admin edits an open task
+// PATCH /tasks/:id - admin (or the Team Lead who assigned it) edits an open task
 const updateTask = async (req, res) => {
 	const task = await findTaskOr404(req.params.id);
+	assertCanManage(req, task);
 	if (CLOSED_STATUSES.includes(task.status)) throw new BadRequestError("Completed or cancelled tasks can't be edited.");
 
 	const changes = [];
@@ -329,6 +366,7 @@ const updateTask = async (req, res) => {
 
 	let newAssignee = null;
 	if (body.assignedTo !== undefined && !sameId(body.assignedTo, task.assignedTo)) {
+		assertNotSelf(req, [body.assignedTo]);
 		[newAssignee] = await loadAssignees([body.assignedTo]);
 		task.assignedTo = newAssignee._id;
 		changes.push(`reassigned to ${newAssignee.name}`);
@@ -347,6 +385,7 @@ const updateTask = async (req, res) => {
 // POST /tasks/:id/cancel { reason } - stays in history as cancelled
 const cancelTask = async (req, res) => {
 	const task = await findTaskOr404(req.params.id);
+	assertCanManage(req, task);
 	if (CLOSED_STATUSES.includes(task.status)) throw new BadRequestError("This task is already closed.");
 
 	const reason = String(req.body?.reason || "").trim();
@@ -473,16 +512,23 @@ const submitTask = async (req, res) => {
 	}
 
 	if (!autoComplete) {
-		await notifyAdmins("task_submitted", `${req.user.name || "A team member"} submitted "${task.title}" for approval`, task._id);
+		const message = `${req.user.name || "A team member"} submitted "${task.title}" for approval`;
+		await notifyAdmins("task_submitted", message, task._id);
+		// The Team Lead who assigned it reviews it too
+		if (task.createdBy && !sameId(task.createdBy, task.assignedTo)) {
+			const creator = await User.findById(task.createdBy).select("role").lean();
+			if (creator && creator.role !== "admin") await notifyUsers([creator._id], "task_submitted", message, task._id);
+		}
 	}
 	res.status(StatusCodes.OK).json({ success: true, data: task });
 };
 
-/* ================= ADMIN: REVIEW ================= */
+/* ================= ADMIN / TEAM LEAD: REVIEW ================= */
 
 // POST /tasks/:id/review { decision: approve | reject, note }
 const reviewTask = async (req, res) => {
 	const task = await findTaskOr404(req.params.id);
+	assertCanManage(req, task);
 	if (task.status !== "submitted") throw new BadRequestError("This task isn't waiting for approval.");
 
 	const submission = task.submissions[task.submissions.length - 1];

@@ -24,7 +24,7 @@ const {
 } = require("../controllers/parseExcel");
 
 // Middleware
-const { auth, authorizeRoles } = require("../middleware/authentication");
+const { auth, authorizeRoles, realAdminOnly } = require("../middleware/authentication");
 const upload = require("../middleware/upload");
 
 /* =============================================================================
@@ -35,7 +35,7 @@ const upload = require("../middleware/upload");
 router.get("/admin/all", auth, authorizeRoles("admin"), getAllLeads);
 router.get("/admin/summary", auth, authorizeRoles("admin"), getAdminLeadSummary);
 router.get("/admin/csr-report/:csrId", auth, authorizeRoles("admin"), getLeadsByCSR);
-router.delete("/admin/delete-all", auth, authorizeRoles("admin"), deleteAllLeads);
+router.delete("/admin/delete-all", auth, authorizeRoles("admin"), realAdminOnly, deleteAllLeads);
 
 // --- 2. BULK & EXCEL OPERATIONS ---
 // Admin can upload, CSRs can only upload if you explicitly allow them
