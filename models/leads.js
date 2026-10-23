@@ -47,6 +47,7 @@ const leadSchema = new mongoose.Schema(
 					"urgent",
 					"new",
 					"interested",
+					"follow up",
 					"converted",
 					"sale",
 					"not interested",
@@ -129,7 +130,11 @@ const CLOSED_STATUSES = ['paid', 'sale', 'not interested', 'converted', 'wrong n
 
 // The only statuses an agent may pin a specific follow-up date on. Any
 // other open status (e.g. "new") just gets the automatic scheduling.
-const FOLLOW_UP_STATUSES = ['interested'];
+const FOLLOW_UP_STATUSES = ['interested', 'follow up'];
+
+// Follow Up always carries the date the CSR picked - it can't be set
+// without one.
+const DATE_REQUIRED_STATUSES = ['follow up'];
 
 // No-answer statuses: the lead is always pushed to the next day so the
 // agent simply retries it tomorrow - a caller-supplied date is ignored.
@@ -229,6 +234,7 @@ const Leads = mongoose.models.Leads || mongoose.model("Leads", leadSchema);
 module.exports = Leads;
 module.exports.CLOSED_STATUSES = CLOSED_STATUSES;
 module.exports.FOLLOW_UP_STATUSES = FOLLOW_UP_STATUSES;
+module.exports.DATE_REQUIRED_STATUSES = DATE_REQUIRED_STATUSES;
 module.exports.AUTO_ROLLOVER_STATUSES = AUTO_ROLLOVER_STATUSES;
 module.exports.tomorrowStart = tomorrowStart;
 module.exports.startOfDay = startOfDay;
