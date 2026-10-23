@@ -387,6 +387,10 @@ const createLead = asyncWrapper(async (req, res) => {
         leadData.followUpDate = startOfDay(new Date());
     }
 
+    if (leadData.remarks) {
+        leadData.remarkHistory = [{ text: leadData.remarks, at: new Date(), by: creatorId }];
+    }
+
     if (!leadData.name) throw new BadRequestError("Lead name is required");
     if (leadData.phone.replace(/\D/g, "").length < 10) throw new BadRequestError("Please enter a valid phone number (at least 10 digits).");
     if (!leadData.assignedTo) throw new BadRequestError("Lead must be assigned to an agent");
@@ -403,8 +407,10 @@ const updateLead = asyncWrapper(async (req, res) => {
     if (updateData.phone) updateData.phone = String(updateData.phone).replace(/[^\d+]/g, "");
 
     updateData.lastUpdatedBy = req.user.userId;
+    // History is only ever appended to (below / addRemark), never replaced
+    delete updateData.remarkHistory;
 
-    const existing = await Lead.findById(req.params.id).select("status").lean();
+    const existing = await Lead.findById(req.params.id).select("status remarks remarkHistory").lean();
     if (!existing) throw new NotFoundError("Lead not found");
     const currentStatus = (existing.status || "").toLowerCase();
 
@@ -441,13 +447,75 @@ const updateLead = asyncWrapper(async (req, res) => {
         }
     }
 
-    const lead = await Lead.findByIdAndUpdate(req.params.id, updateData, {
+    // A changed remark sent through here is recorded in the history too
+    const update = { $set: updateData };
+    if (typeof updateData.remarks === "string") {
+        updateData.remarks = updateData.remarks.trim();
+        if (updateData.remarks && updateData.remarks !== (existing.remarks || "")) {
+            update.$push = { remarkHistory: { $each: remarkEntries(existing, updateData.remarks, req.user.userId) } };
+        }
+    }
+
+    const lead = await Lead.findByIdAndUpdate(req.params.id, update, {
         new: true,
         runValidators: true
     });
 
     if (!lead) throw new NotFoundError("Lead not found");
     res.status(200).json({ success: true, data: lead });
+});
+
+// History entries to push for a new remark. A lead whose only remark
+// predates the history gets that one saved first, as a legacy entry.
+const remarkEntries = (existing, text, userId) => {
+    const entries = [];
+    if ((existing.remarkHistory || []).length === 0 && existing.remarks) {
+        entries.push({ text: existing.remarks, legacy: true });
+    }
+    entries.push({ text, at: new Date(), by: userId });
+    return entries;
+};
+
+// 8b. Remarks - add-only history, newest becomes the lead's `remarks`
+const addRemark = asyncWrapper(async (req, res) => {
+    const text = String(req.body.text || "").trim();
+    if (!text) throw new BadRequestError("Remark can't be empty");
+
+    const existing = await Lead.findById(req.params.id).select("remarks remarkHistory").lean();
+    if (!existing) throw new NotFoundError("Lead not found");
+
+    const lead = await Lead.findByIdAndUpdate(
+        req.params.id,
+        {
+            $set: { remarks: text, lastUpdatedBy: req.user.userId },
+            $push: { remarkHistory: { $each: remarkEntries(existing, text, req.user.userId) } },
+        },
+        { new: true }
+    );
+
+    res.status(200).json({ success: true, data: lead });
+});
+
+const getRemarkHistory = asyncWrapper(async (req, res) => {
+    const lead = await Lead.findById(req.params.id)
+        .select("remarks remarkHistory")
+        .populate("remarkHistory.by", "name role")
+        .lean();
+    if (!lead) throw new NotFoundError("Lead not found");
+
+    let history = (lead.remarkHistory || []).map((r) => ({
+        text: r.text,
+        at: r.at || null,
+        legacy: !!r.legacy,
+        byName: r.by ? r.by.name : null,
+        byRole: r.by ? r.by.role : null,
+    }));
+    // Lead that only has a remark from before the history existed
+    if (history.length === 0 && lead.remarks) {
+        history = [{ text: lead.remarks, at: null, legacy: true, byName: null, byRole: null }];
+    }
+
+    res.status(200).json({ success: true, data: history });
 });
 
 // 9. Delete Functions
@@ -476,6 +544,8 @@ module.exports = {
     getLeads,
     getSingleLead,
     updateLead,
+    addRemark,
+    getRemarkHistory,
     deleteLead,
     deleteAllLeads,
     convertLeadToSale,
