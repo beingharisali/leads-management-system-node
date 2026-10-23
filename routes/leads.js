@@ -8,6 +8,8 @@ const {
 	getLeadsByDate,
 	getSingleLead,
 	updateLead,
+	addRemark,
+	getRemarkHistory,
 	deleteLead,
 	deleteAllLeads,
 	getAllLeads,
@@ -57,6 +59,10 @@ router.route("/:id")
 	.get(auth, getSingleLead)
 	.patch(auth, updateLead) // Removed specific role check to allow both CSR & Admin
 	.delete(auth, authorizeRoles("admin"), deleteLead); // Delete restricted to Admin
+
+// Remark history (add-only)
+router.get("/:id/remarks", auth, getRemarkHistory);
+router.post("/:id/remarks", auth, addRemark);
 
 // --- 5. SPECIAL OPERATIONS ---
 router.post("/convert-to-sale/:id", auth, convertLeadToSale);

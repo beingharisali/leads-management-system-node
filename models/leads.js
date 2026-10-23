@@ -74,10 +74,23 @@ const leadSchema = new mongoose.Schema(
 		followUpDate: {
 			type: Date,
 		},
+		// Always the latest remark (kept for every table/search that shows it)
 		remarks: {
 			type: String,
 			trim: true,
 		},
+		// Every remark ever added, oldest first. Add-only: entries are never
+		// edited or removed. `by` is empty for automatic remarks, and a
+		// remark saved before this history existed is kept as a `legacy`
+		// entry (its real time was never recorded).
+		remarkHistory: [
+			{
+				text: { type: String, trim: true, required: true },
+				at: { type: Date },
+				by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+				legacy: { type: Boolean, default: false },
+			},
+		],
 		saleAmount: {
 			type: Number,
 			default: 0,
@@ -159,6 +172,12 @@ const tomorrowStart = () => {
 
 // Save hook (Lead create karte waqt chalta hai)
 leadSchema.pre('save', async function () {
+	// A lead created with a remark (e.g. by the admission form) starts its
+	// history with it, unless the caller already filled the history in.
+	if (this.isNew && this.remarks && this.remarkHistory.length === 0) {
+		this.remarkHistory.push({ text: this.remarks, at: new Date() });
+	}
+
 	if (this.isModified('status')) {
 		const currentStatus = this.status
 			? this.status.toLowerCase()
