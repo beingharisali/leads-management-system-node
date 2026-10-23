@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const xlsx = require("xlsx");
 const Lead = require("../models/leads.js");
-const { CLOSED_STATUSES, FOLLOW_UP_STATUSES, AUTO_ROLLOVER_STATUSES, startOfDay, tomorrowStart } = require("../models/leads.js");
+const { CLOSED_STATUSES, FOLLOW_UP_STATUSES, DATE_REQUIRED_STATUSES, AUTO_ROLLOVER_STATUSES, startOfDay, tomorrowStart } = require("../models/leads.js");
 const Sale = require("../models/Sale.js");
 const asyncWrapper = require("../middleware/async");
 const { BadRequestError, NotFoundError, UnauthenticatedError, ForbiddenError } = require("../errors");
@@ -373,11 +373,14 @@ const createLead = asyncWrapper(async (req, res) => {
     // A brand-new open lead should show up in "today" immediately. Not
     // Pick/Busy go straight to tomorrow, a caller-supplied date is only
     // honoured for Interested, and closed statuses never get one.
+    if (DATE_REQUIRED_STATUSES.includes(normalizedStatus) && !followUpDate) {
+        throw new BadRequestError("Please pick a follow-up date for a Follow Up lead");
+    }
     if (AUTO_ROLLOVER_STATUSES.includes(normalizedStatus)) {
         leadData.followUpDate = tomorrowStart();
     } else if (followUpDate) {
         if (!FOLLOW_UP_STATUSES.includes(normalizedStatus)) {
-            throw new BadRequestError("Follow-up date can only be set when status is Interested");
+            throw new BadRequestError("Follow-up date can only be set when status is Interested or Follow Up");
         }
         leadData.followUpDate = followUpDate;
     } else if (!CLOSED_STATUSES.includes(normalizedStatus)) {
@@ -416,7 +419,17 @@ const updateLead = asyncWrapper(async (req, res) => {
         throw new BadRequestError("This lead is closed and its status can no longer be changed");
     }
 
-    // Follow-up dates can only be picked for Interested leads. Not Pick/Busy
+    // Switching a lead to Follow Up must come with the picked date.
+    if (
+        updateData.status &&
+        updateData.status !== currentStatus &&
+        DATE_REQUIRED_STATUSES.includes(updateData.status) &&
+        !updateData.followUpDate
+    ) {
+        throw new BadRequestError("Please pick a follow-up date for a Follow Up lead");
+    }
+
+    // Follow-up dates can only be picked for Interested / Follow Up leads. Not Pick/Busy
     // are rolled to tomorrow by the model's update hook, so a date sent
     // alongside that status change is simply dropped.
     if (updateData.followUpDate) {
@@ -424,7 +437,7 @@ const updateLead = asyncWrapper(async (req, res) => {
         if (AUTO_ROLLOVER_STATUSES.includes(effectiveStatus) && updateData.status) {
             delete updateData.followUpDate;
         } else if (!FOLLOW_UP_STATUSES.includes(effectiveStatus)) {
-            throw new BadRequestError("Follow-up date can only be set when status is Interested");
+            throw new BadRequestError("Follow-up date can only be set when status is Interested or Follow Up");
         }
     }
 
