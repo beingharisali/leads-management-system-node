@@ -158,7 +158,7 @@ const getComplaints = async (req, res) => {
 	if (replied === "no") filter.reply = { $in: ["", null] };
 	if (against && mongoose.isValidObjectId(against)) {
 		// Keeps the reviewer's own exclusion: asking for themselves finds nothing
-		filter.against = isRealAdmin(req) || !sameId(against, req.user.userId) ? against : null;
+		filter.against = isRealAdmin(req) || !sameId(against, req.user.userId) ? against : { $in: [] };
 	}
 	const search = String(q || "").trim();
 	if (search) {
