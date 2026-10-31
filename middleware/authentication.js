@@ -8,6 +8,8 @@ const User = require("../models/User");
 const STAFF_ALLOWED_PATHS = [
     "/api/v1/tasks",
     "/api/v1/notifications",
+    // Filing complaints; the admin side checks the "complaints" permission itself
+    "/api/v1/complaints",
     "/api/v1/auth/me",
     "/api/v1/auth/updateUser",
 ];

@@ -1,16 +1,17 @@
 const mongoose = require("mongoose");
 
-// In-app notifications for the task module (admin bell + team member bell).
+// In-app notifications for the task module and complaints (admin bell + team member bell).
 const notificationSchema = new mongoose.Schema(
 	{
 		recipient: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 		type: {
 			type: String,
-			enum: ["task_assigned", "task_overdue", "task_submitted", "task_approved", "task_rejected", "task_blocked", "task_cancelled", "task_self_created"],
+			enum: ["task_assigned", "task_overdue", "task_submitted", "task_approved", "task_rejected", "task_blocked", "task_cancelled", "task_self_created", "complaint_filed", "complaint_replied"],
 			required: true,
 		},
 		message: { type: String, required: true },
 		task: { type: mongoose.Schema.Types.ObjectId, ref: "Task" },
+		complaint: { type: mongoose.Schema.Types.ObjectId, ref: "Complaint" },
 		read: { type: Boolean, default: false },
 	},
 	{ timestamps: true }

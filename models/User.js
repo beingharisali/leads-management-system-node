@@ -68,7 +68,7 @@ const UserSchema = new mongoose.Schema({
 	// CSRs can only be Team Leads; staff can get any of them.
 	permissions: [{
 		type: String,
-		enum: ["team_lead", "leads", "tasks", "accounts"]
+		enum: ["team_lead", "leads", "tasks", "accounts", "complaints"]
 	}]
 }, { timestamps: true }); // Timestamps add karne se analytics behtar hoti hai
 
@@ -97,7 +97,8 @@ UserSchema.methods.comparePassword = async function (candidatePassword) {
 // leads:     Leads Console (all leads, stats, CSR dashboards)
 // tasks:     Team Tasks admin (every task, repeating tasks, approvals)
 // accounts:  create CSR / staff accounts, activate / deactivate them, change CSR numbers
-const PERMISSIONS = ["team_lead", "leads", "tasks", "accounts"];
+// complaints: read and answer team members' complaints (except ones about themselves)
+const PERMISSIONS = ["team_lead", "leads", "tasks", "accounts", "complaints"];
 const PERMISSIONS_BY_ROLE = { csr: ["team_lead"], staff: PERMISSIONS, admin: [] };
 
 // Keeps only the permissions this role can have, without duplicates

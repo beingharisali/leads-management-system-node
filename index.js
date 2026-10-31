@@ -21,6 +21,7 @@ const setupAdminRouter = require("./routes/setupAdmin");
 const admissionRoutes = require("./routes/admissionRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const complaintRoutes = require("./routes/complaintRoutes");
 
 const { startAdmissionSyncLoop } = require("./utils/lmsClient");
 const { startTaskSchedulerLoop } = require("./utils/taskScheduler");
@@ -72,6 +73,7 @@ app.use("/api/v1/activity", activityRoutes);
 app.use("/api/v1/admission", admissionRoutes);
 app.use("/api/v1/tasks", taskRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/complaints", complaintRoutes);
 
 // Health Check Route (Just to check if server is alive)
 app.get("/health", (req, res) => res.status(200).send("Server is healthy"));
